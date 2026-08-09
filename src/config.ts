@@ -22,7 +22,8 @@ if (process.env.BUCKET_ENDPOINT) {
 }
 
 export const CONFIG = {
-  PORT: process.env.PORT || 5000,
+  PORT: parseInt(process.env.PORT || '5000', 10),
+  HOST: process.env.HOST || '0.0.0.0',
   NODE_ENV: process.env.NODE_ENV || 'development',
   SUPABASE_URL: process.env.SUPABASE_URL || 'https://dgbxcakkqrgrapwsvrol.supabase.co',
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',

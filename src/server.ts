@@ -52,8 +52,14 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
 });
 
-app.listen(CONFIG.PORT, () => {
-  console.log(`🚀 Yours Backend Server running on http://localhost:${CONFIG.PORT}`);
+app.listen(CONFIG.PORT, CONFIG.HOST, () => {
+  console.log(`🚀 Yours Backend Server running on http://${CONFIG.HOST}:${CONFIG.PORT}`);
 });
+
+if (CONFIG.PORT !== 3000) {
+  app.listen(3000, CONFIG.HOST, () => {
+    console.log(`🚀 Yours Backend Server also running on http://${CONFIG.HOST}:3000`);
+  });
+}
 
 export default app;
