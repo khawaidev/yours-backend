@@ -96,6 +96,23 @@ class R2Service {
         return { r2Key, url: `${config_1.CONFIG.R2.PUBLIC_DOMAIN}/${r2Key}` };
     }
     /**
+     * Upload a base64-encoded video file (e.g. a generated clip) to R2 and
+     * return its public URL, using the same public bucket so it is readable
+     * directly through the public R2 domain.
+     */
+    static async uploadBase64Video(input) {
+        const mimeType = input.mimeType || 'video/mp4';
+        const ext = (mimeType.split('/')[1] || 'mp4').replace(/[^a-z0-9]/gi, '');
+        const r2Key = `video/yours/${input.characterId}-${Date.now()}.${ext}`;
+        await config_1.r2Client.send(new client_s3_1.PutObjectCommand({
+            Bucket: GENERATED_IMAGES_BUCKET,
+            Key: r2Key,
+            Body: Buffer.from(input.base64, 'base64'),
+            ContentType: mimeType,
+        }));
+        return { r2Key, url: `${config_1.CONFIG.R2.PUBLIC_DOMAIN}/${r2Key}` };
+    }
+    /**
      * Insert media asset record into database
      */
     static async createMediaAsset(input) {

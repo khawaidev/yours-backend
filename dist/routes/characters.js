@@ -524,6 +524,184 @@ router.post('/:id/generate-voice', auth_1.requireAuth, rateLimitService_1.messag
     }
 });
 /**
+ * POST /api/v1/characters/:id/generate-video
+ * Generate a short animated video of the character (DeAPI animation).
+ *
+ * Flow mirrors generate-image: pick the character's reference photo, submit
+ * an animation job to DeAPI, poll until done, upload the clip to R2, persist
+ * the user request + character video message, and return the public URL.
+ */
+router.post('/:id/generate-video', auth_1.requireAuth, rateLimitService_1.messagingRateLimiter, async (req, res) => {
+    try {
+        const characterId = req.params.id;
+        const { prompt, userId, conversationId } = req.body;
+        if (!prompt || !prompt.trim()) {
+            return res.status(400).json({ success: false, error: 'prompt required' });
+        }
+        if (!userId)
+            return res.status(400).json({ success: false, error: 'userId required' });
+        if (!(0, auth_1.requireOwnership)(req, res, userId))
+            return;
+        const { data: character, error } = await config_1.supabaseAdmin
+            .from('characters')
+            .select('*')
+            .eq('id', characterId)
+            .single();
+        if (error || !character) {
+            return res.status(404).json({ success: false, error: 'Character not found' });
+        }
+        let referenceUrl = null;
+        let mimeType = 'image/jpeg';
+        try {
+            const { data: feeds } = await config_1.supabaseAdmin
+                .from('character_feeds')
+                .select('media_url, media_type')
+                .eq('character_id', characterId)
+                .order('sort_order', { ascending: true });
+            const imageFeed = (feeds || []).find((f) => f.media_type === 'image' && f.media_url);
+            referenceUrl = imageFeed ? imageFeed.media_url : null;
+        }
+        catch { }
+        if (!referenceUrl) {
+            referenceUrl =
+                character.feed_media_url ||
+                    character.background_image_url ||
+                    character.portrait_image_url ||
+                    character.circular_profile_image_url ||
+                    null;
+        }
+        if (!referenceUrl) {
+            return res.status(404).json({ success: false, error: 'No character image available to animate' });
+        }
+        const m = /\.(jpe?g|png|webp)(\?|$)/i.exec(referenceUrl);
+        if (m) {
+            const ext = m[1].toLowerCase();
+            if (ext === 'png')
+                mimeType = 'image/png';
+            else if (ext === 'webp')
+                mimeType = 'image/webp';
+            else
+                mimeType = 'image/jpeg';
+        }
+        const imageRes = await fetch(referenceUrl, { signal: AbortSignal.timeout(30000) });
+        if (!imageRes.ok) {
+            return res.status(502).json({ success: false, error: 'Failed to download character image' });
+        }
+        const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
+        const result = await deapiImageService_1.DeApiImageService.generateVideo(imageBuffer, prompt.trim(), mimeType);
+        if (!result.success || !result.source) {
+            return res.status(502).json({ success: false, error: result.error || 'Video generation failed' });
+        }
+        // Resolve the raw result (HTTP URL or data URL) into base64 + mimeType.
+        let base64;
+        let videoMimeType = 'video/mp4';
+        const source = result.source;
+        if (source.startsWith('data:')) {
+            const dm = /^data:([^;,]+);base64,(.*)$/s.exec(source);
+            if (!dm) {
+                return res.status(502).json({ success: false, error: 'deAPI returned an unreadable video result' });
+            }
+            videoMimeType = dm[1];
+            base64 = dm[2];
+        }
+        else {
+            const videoRes = await fetch(source, { signal: AbortSignal.timeout(120000) });
+            if (!videoRes.ok) {
+                return res.status(502).json({ success: false, error: 'Failed to download generated video' });
+            }
+            const buf = Buffer.from(await videoRes.arrayBuffer());
+            base64 = buf.toString('base64');
+            videoMimeType = videoRes.headers.get('content-type') || videoMimeType;
+        }
+        let mediaUrl = null;
+        if (userId && conversationId) {
+            try {
+                const upload = await r2Service_1.R2Service.uploadBase64Video({
+                    characterId,
+                    base64,
+                    mimeType: videoMimeType,
+                });
+                mediaUrl = upload.url;
+                const now = new Date();
+                const { data: media, error: mediaErr } = await config_1.supabaseAdmin
+                    .from('character_chat_media')
+                    .insert({
+                    character_id: characterId,
+                    user_id: userId,
+                    media_url: mediaUrl,
+                    media_type: 'video',
+                })
+                    .select()
+                    .single();
+                if (mediaErr)
+                    throw new Error(mediaErr.message);
+                const { data: userMsg, error: userMsgErr } = await config_1.supabaseAdmin
+                    .from('messages')
+                    .insert({
+                    conversation_id: conversationId,
+                    sender_type: 'user',
+                    sender_id: userId,
+                    message_type: 'text',
+                    content: prompt.trim(),
+                })
+                    .select()
+                    .single();
+                if (userMsgErr)
+                    throw new Error(userMsgErr.message);
+                const { data: aiMsg, error: aiMsgErr } = await config_1.supabaseAdmin
+                    .from('messages')
+                    .insert({
+                    conversation_id: conversationId,
+                    sender_type: 'character',
+                    sender_id: characterId,
+                    message_type: 'video',
+                    content: '[Video]',
+                    media_id: media.id,
+                })
+                    .select()
+                    .single();
+                if (aiMsgErr)
+                    throw new Error(aiMsgErr.message);
+                await config_1.supabaseAdmin
+                    .from('conversations')
+                    .update({ last_message_at: now.toISOString() })
+                    .eq('id', conversationId);
+                const storedMessages = [
+                    {
+                        id: userMsg.id,
+                        role: 'user',
+                        content: prompt.trim(),
+                        timestamp: now.toISOString(),
+                    },
+                    {
+                        id: aiMsg.id,
+                        role: 'assistant',
+                        content: '[Video]',
+                        timestamp: now.toISOString(),
+                        messageType: 'video',
+                        mediaUrl,
+                        mediaId: media.id,
+                    },
+                ];
+                conversationStorageService_1.ConversationStorageService.appendMessages(userId, conversationId, characterId, storedMessages).catch((err) => {
+                    console.warn('[characters] video R2 append failed:', err?.message);
+                });
+            }
+            catch (err) {
+                console.warn('[characters] video persistence failed (video still returned):', err?.message);
+            }
+        }
+        return res.json({
+            success: true,
+            videoUrl: mediaUrl,
+            mimeType: videoMimeType,
+        });
+    }
+    catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+/**
  * GET /api/v1/characters/:id/chat-media?userId=...
  * Private album: list the media (photos the user generated in chat with this
  * character) stored for this user+character, newest first. Only that user's

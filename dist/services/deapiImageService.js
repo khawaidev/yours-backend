@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DeApiImageService = void 0;
 const config_1 = require("../config");
 const DEAPI_ENDPOINT = 'https://api.deapi.ai/api/v1/client/img2img';
+const DEAPI_VIDEO_ENDPOINT = 'https://api.deapi.ai/api/v2/videos/animations';
 const DEAPI_JOB_ENDPOINT = 'https://api.deapi.ai/api/v2/jobs';
 const POLL_INTERVAL_MS = 3000;
 const POLL_TIMEOUT_MS = 300000;
@@ -195,6 +196,72 @@ Photorealistic result with natural lighting and realistic skin texture. Output m
         catch {
             return null;
         }
+    }
+    /**
+     * Generate a short animated video from the character's reference image.
+     *
+     * DeAPI's `/api/v2/videos/animations` endpoint is asynchronous like img2img:
+     * submit returns a `request_id`, then we poll the same jobs endpoint until
+     * the video finishes rendering. The raw result is an HTTP or data URL.
+     */
+    static async generateVideo(referenceImage, userRequest, mimeType = 'image/jpeg') {
+        const keys = (0, config_1.getDeAPiKeyPool)();
+        if (keys.length === 0) {
+            return { success: false, error: 'DEAPI_API_KEY not configured' };
+        }
+        const prompt = `Bring this portrait of the character to life with a short, natural and emotive animation. The woman smiles warmly, gives a playful wink, sways gently and tosses her hair softly in the breeze. Keep the exact same person, face, hairstyle, body and lighting. Smooth cinematic motion, realistic skin texture, natural filmic colors, tasteful and elegant.
+User request: "${userRequest}". Follow any styling or mood the user described, but always keep it tasteful and non-explicit.`;
+        let lastError = null;
+        const maxKeys = Math.min(keys.length, 3);
+        for (let i = 0; i < maxKeys; i++) {
+            try {
+                const requestId = await this.submitVideo(keys[i], referenceImage, prompt, mimeType);
+                if (!requestId)
+                    continue;
+                const resultUrl = await this.pollUntilDone(keys[i], requestId);
+                if (!resultUrl) {
+                    lastError = 'deAPI video job did not finish';
+                    continue;
+                }
+                return { success: true, source: resultUrl };
+            }
+            catch (err) {
+                lastError = err?.message || String(err);
+            }
+        }
+        return { success: false, error: lastError || 'Video generation failed' };
+    }
+    static async submitVideo(key, referenceImage, prompt, mimeType) {
+        const form = new FormData();
+        form.append('first_frame_image', new Blob([new Uint8Array(referenceImage)], { type: mimeType }), `frame.${mimeType.split('/')[1] || 'jpg'}`);
+        form.append('prompt', prompt);
+        form.append('frames', '120');
+        form.append('width', '512');
+        form.append('height', '768');
+        form.append('fps', '30');
+        form.append('model', 'Ltxv_13B_0_9_8_Distilled_FP8');
+        form.append('steps', '1');
+        form.append('negative_prompt', 'worst quality, low quality, distorted, deformed face, bad hands, extra limbs, bad anatomy, watermark, text, logo, jitter, flicker');
+        form.append('seed', String(Math.floor(Math.random() * 999999999)));
+        const response = await fetch(DEAPI_VIDEO_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${key}`,
+                Accept: 'application/json',
+            },
+            body: form,
+            signal: AbortSignal.timeout(120000),
+        });
+        if (!response.ok) {
+            const bodyText = await response.text().catch(() => '');
+            throw new Error(`deAPI video submit ${response.status}: ${bodyText}`);
+        }
+        const json = await response.json();
+        const requestId = json?.data?.request_id || json?.request_id;
+        if (!requestId) {
+            throw new Error('deAPI video submit returned no request_id');
+        }
+        return requestId;
     }
 }
 exports.DeApiImageService = DeApiImageService;
