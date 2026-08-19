@@ -193,7 +193,7 @@ CREATE TABLE IF NOT EXISTS public.character_relationships (
 -- 8. WALLETS & TRANSACTIONS
 CREATE TABLE IF NOT EXISTS public.wallets (
     user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
-    credits NUMERIC(12, 2) DEFAULT 100.00,
+    credits NUMERIC(12, 2) DEFAULT 50.00,
     bonus_credits NUMERIC(12, 2) DEFAULT 0.00,
     updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -223,6 +223,17 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- 9.5 DAILY LOGIN REWARDS
+CREATE TABLE IF NOT EXISTS public.daily_rewards (
+    user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+    streak INT DEFAULT 0,
+    last_claim_date DATE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE public.daily_rewards ENABLE ROW LEVEL SECURITY;
 
 -- 10. ANALYTICS & EVENTS
 CREATE TABLE IF NOT EXISTS public.analytics_events (

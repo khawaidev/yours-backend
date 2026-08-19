@@ -3,8 +3,8 @@ node_modules/
 /.pnpm
 /.yarn
 
-# Build output
-dist/
+# Build output (dist is tracked: it is the working backend source)
+# dist/
 build/
 
 # Environment variables

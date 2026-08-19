@@ -1,0 +1,57 @@
+CHAT MODELS
+
+PROVIDERS
+
+1.Clod api            USER MESSAGE
+                         │
+                         ▼
+                 ┌──────────────┐
+                 │   ROUTER     │
+                 └──────┬───────┘
+                        │
+                        ▼
+              🥇 Trinity Mini
+                        │
+                  unavailable?
+                        ▼
+              🥈 GPT OSS 20B
+                        │
+                  unavailable?
+                        ▼
+              🥉 Qwen 3.5 9B
+                        │
+                  unavailable?
+                        ▼
+              4️⃣ Llama 3.3 70B
+                        │
+                  unavailable?
+                        ▼
+              5️⃣ Gemma 4 31B IT
+                        │
+                  unavailable?
+                        ▼
+              6️⃣ GPT OSS 120B
+                        │
+                  unavailable?
+                        ▼
+              7️⃣ Llama 3.1 8B
+                        │
+                  unavailable?
+                        ▼
+              8️⃣ Qwen 3 235B Thinking
+
+
+
+
+2.GEMINI API
+
+
+
+
+
+
+
+3.GROQ API
+
+
+
