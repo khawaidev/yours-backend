@@ -177,11 +177,11 @@ ${transcript}`;
      * recent window, embeds it, and upserts a Qdrant memory. Never throws — all
      * failures are logged and swallowed so chat is never broken by memory work.
      */
-    static async maybeSummarizeConversation(userId, conversationId, characterId) {
+    static async maybeSummarizeConversation(userId, conversationId, characterId, meta) {
         try {
-            const meta = await conversationStorageService_1.ConversationStorageService.getMetadata(userId, conversationId);
-            const processed = meta.summarizedThrough || 0;
-            const pending = meta.messageCount - processed;
+            const currentMeta = meta || await conversationStorageService_1.ConversationStorageService.getMetadata(userId, conversationId);
+            const processed = currentMeta.summarizedThrough || 0;
+            const pending = currentMeta.messageCount - processed;
             if (pending < config_1.memoryConfig.summaryMessageThreshold)
                 return;
             const windowMessages = await conversationStorageService_1.ConversationStorageService.readRecentMessages(userId, conversationId, config_1.memoryConfig.summaryMessageThreshold);
@@ -196,8 +196,8 @@ ${transcript}`;
             if (await this.hasNearDuplicate(userId, memoryText)) {
                 // Highly similar memory already exists — just advance the watermark.
                 await conversationStorageService_1.ConversationStorageService.saveMetadata({
-                    ...meta,
-                    summarizedThrough: meta.messageCount,
+                    ...currentMeta,
+                    summarizedThrough: currentMeta.messageCount,
                 });
                 return;
             }
@@ -221,8 +221,8 @@ ${transcript}`;
             await qdrantService_1.QdrantService.upsertMemory({ id, vector: embedding.vector, payload });
             // Advance the watermark only after a successful persist.
             await conversationStorageService_1.ConversationStorageService.saveMetadata({
-                ...meta,
-                summarizedThrough: meta.messageCount,
+                ...currentMeta,
+                summarizedThrough: currentMeta.messageCount,
             });
         }
         catch (err) {

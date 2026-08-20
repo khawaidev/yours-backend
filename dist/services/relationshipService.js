@@ -38,8 +38,8 @@ class RelationshipService {
     /**
      * Apply bounded updates to relationship metrics
      */
-    static async updateRelationship(userId, characterId, delta) {
-        const current = await this.getRelationship(userId, characterId);
+    static async updateRelationship(userId, characterId, delta, known) {
+        const current = known || await this.getRelationship(userId, characterId);
         // Apply strict bounds (-5.0 to +5.0 per single interaction)
         const clampDelta = (val) => Math.max(-5.0, Math.min(5.0, val || 0));
         const newAffection = Math.max(0, Math.min(100, current.affection + clampDelta(delta.affection)));

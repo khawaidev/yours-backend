@@ -13,12 +13,41 @@ const auth_1 = require("../middleware/auth");
 // will replace it later (characters.voice_id already stores an optional ID).
 const DEFAULT_VOICE_ID = '8fdcb77230554e1ab160e2361bff4296';
 const router = (0, express_1.Router)();
+// The public character catalog is global and rarely changes; cache it so the
+// Discover/feed endpoints don't re-SELECT every character + feed media per hit.
+const CHARACTERS_CACHE_TTL_MS = 5 * 60 * 1000;
+let charactersCache = null;
+// Reference images (character feed photos) are re-downloaded on every image/
+// video generation request. Cache the decoded bytes per URL for 30 minutes:
+// the photos are effectively immutable, so this is pure bandwidth savings.
+const REF_IMAGE_CACHE_TTL_MS = 30 * 60 * 1000;
+const REF_IMAGE_CACHE_MAX = 500;
+const referenceImageCache = new Map();
+async function getReferenceImageBytes(referenceUrl) {
+    const cached = referenceImageCache.get(referenceUrl);
+    if (cached && Date.now() - cached.ts < REF_IMAGE_CACHE_TTL_MS) {
+        return cached.buffer;
+    }
+    const imageRes = await fetch(referenceUrl, { signal: AbortSignal.timeout(30000) });
+    if (!imageRes.ok) {
+        throw new Error('Failed to download character image');
+    }
+    const buffer = Buffer.from(await imageRes.arrayBuffer());
+    if (referenceImageCache.size >= REF_IMAGE_CACHE_MAX) {
+        referenceImageCache.delete(referenceImageCache.keys().next().value);
+    }
+    referenceImageCache.set(referenceUrl, { ts: Date.now(), buffer });
+    return buffer;
+}
 /**
  * GET /api/v1/characters
  * List public discoverable characters
  */
 router.get('/', async (req, res) => {
     try {
+        if (req.query.fresh !== '1' && charactersCache && Date.now() - charactersCache.ts < CHARACTERS_CACHE_TTL_MS) {
+            return res.json({ success: true, characters: charactersCache.characters });
+        }
         const { data: characters, error } = await config_1.supabaseAdmin
             .from('characters')
             .select('*,character_feeds(media_url,media_type)')
@@ -26,6 +55,7 @@ router.get('/', async (req, res) => {
             .order('created_at', { ascending: false });
         if (error)
             throw new Error(error.message);
+        charactersCache = { ts: Date.now(), characters };
         return res.json({ success: true, characters });
     }
     catch (err) {
@@ -118,6 +148,7 @@ router.post('/', auth_1.requireAuth, async (req, res) => {
             .single();
         if (error)
             throw new Error(error.message);
+        charactersCache = null;
         return res.status(201).json({ success: true, character });
     }
     catch (err) {
@@ -237,11 +268,13 @@ router.post('/:id/generate-image', auth_1.requireAuth, rateLimitService_1.messag
             else
                 mimeType = 'image/jpeg';
         }
-        const imageRes = await fetch(referenceUrl, { signal: AbortSignal.timeout(30000) });
-        if (!imageRes.ok) {
+        let imageBuffer;
+        try {
+            imageBuffer = await getReferenceImageBytes(referenceUrl);
+        }
+        catch {
             return res.status(502).json({ success: false, error: 'Failed to download character image' });
         }
-        const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
         const result = await deapiImageService_1.DeApiImageService.generatePortrait(imageBuffer, prompt, mimeType);
         if (!result.success || !result.imageBase64) {
             return res.status(502).json({ success: false, error: result.error || 'Image generation failed' });
@@ -583,11 +616,13 @@ router.post('/:id/generate-video', auth_1.requireAuth, rateLimitService_1.messag
             else
                 mimeType = 'image/jpeg';
         }
-        const imageRes = await fetch(referenceUrl, { signal: AbortSignal.timeout(30000) });
-        if (!imageRes.ok) {
+        let imageBuffer;
+        try {
+            imageBuffer = await getReferenceImageBytes(referenceUrl);
+        }
+        catch {
             return res.status(502).json({ success: false, error: 'Failed to download character image' });
         }
-        const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
         const result = await deapiImageService_1.DeApiImageService.generateVideo(imageBuffer, prompt.trim(), mimeType);
         if (!result.success || !result.source) {
             return res.status(502).json({ success: false, error: result.error || 'Video generation failed' });

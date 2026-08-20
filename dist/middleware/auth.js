@@ -4,6 +4,12 @@ exports.requireAuth = requireAuth;
 exports.requireOwnership = requireOwnership;
 exports.requireAdmin = requireAdmin;
 const config_1 = require("../config");
+// Authenticated identities are cached briefly so protected routes don't hit the
+// Supabase auth endpoint on every request. 60s is well under the JWT lifetime,
+// and failed lookups are evicted so a revoked session is rejected promptly.
+const AUTH_CACHE_TTL_MS = 60 * 1000;
+const MAX_AUTH_CACHE_ENTRIES = 10000;
+const authCache = new Map();
 /** Authenticate the request via a Bearer token. 401 when absent/invalid. */
 async function requireAuth(req, res, next) {
     const header = req.headers.authorization || '';
@@ -12,14 +18,25 @@ async function requireAuth(req, res, next) {
         return res.status(401).json({ success: false, error: 'Authentication required' });
     }
     try {
+        const cached = authCache.get(token);
+        if (cached && cached.expiresAt > Date.now()) {
+            req.authUserId = cached.userId;
+            return next();
+        }
         const { data, error } = await config_1.supabaseAdmin.auth.getUser(token);
         if (error || !data.user) {
+            authCache.delete(token);
             return res.status(401).json({ success: false, error: 'Invalid or expired session' });
         }
+        if (authCache.size >= MAX_AUTH_CACHE_ENTRIES) {
+            authCache.clear();
+        }
+        authCache.set(token, { userId: data.user.id, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
         req.authUserId = data.user.id;
         next();
     }
     catch (err) {
+        authCache.delete(token);
         return res.status(401).json({ success: false, error: 'Invalid or expired session' });
     }
 }

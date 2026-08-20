@@ -4,6 +4,13 @@ exports.ConversationStorageService = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const config_1 = require("../config");
 const BUCKET = () => config_1.CONFIG.R2.BUCKET_NAME || 'yours';
+// Short-lived in-memory mirror of the most recent R2 objects for a conversation.
+// The same metadata.json/chunk is frequently re-read right after being written
+// (message append -> background summarization), so caching it for a few seconds
+// avoids redundant R2 round trips without ever serving stale data for long.
+const OBJECT_CACHE_TTL_MS = 5 * 1000;
+const OBJECT_CACHE_MAX = 1000;
+const objectCache = new Map();
 function conversationDir(userId, conversationId) {
     return `users/${userId}/conversations/${conversationId}`;
 }
@@ -64,6 +71,9 @@ class ConversationStorageService {
             updatedAt: now,
         };
         await this.putObject(metadataKey(userId, conversationId), JSON.stringify(newMeta), 'application/json');
+        // Return the fresh metadata so callers (e.g. background summarization)
+        // don't have to re-read what we just wrote.
+        return newMeta;
     }
     /**
      * Update the summary bookkeeping for a conversation (how many messages have
@@ -167,6 +177,7 @@ class ConversationStorageService {
                     Bucket: BUCKET(),
                     Delete: { Objects: keys.map((Key) => ({ Key })) },
                 }));
+                keys.forEach((k) => objectCache.delete(k));
             }
             continuationToken = list.IsTruncated ? list.NextContinuationToken : undefined;
         } while (continuationToken);
@@ -202,6 +213,10 @@ class ConversationStorageService {
             .filter((l) => l.trim().length > 0);
     }
     static async getObject(key) {
+        const cached = objectCache.get(key);
+        if (cached && Date.now() - cached.ts < OBJECT_CACHE_TTL_MS) {
+            return cached.body;
+        }
         try {
             const result = await config_1.r2Client.send(new client_s3_1.GetObjectCommand({ Bucket: BUCKET(), Key: key }));
             if (!result.Body)
@@ -210,11 +225,17 @@ class ConversationStorageService {
             for await (const chunk of result.Body) {
                 chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
             }
-            return Buffer.concat(chunks).toString('utf8');
+            const body = Buffer.concat(chunks).toString('utf8');
+            if (body) {
+                this.cacheSet(key, body);
+            }
+            return body;
         }
         catch (err) {
-            if (err?.$metadata?.httpStatusCode === 404)
+            if (err?.$metadata?.httpStatusCode === 404) {
+                objectCache.delete(key);
                 return null;
+            }
             throw err;
         }
     }
@@ -225,6 +246,28 @@ class ConversationStorageService {
             Body: body,
             ContentType: contentType,
         }));
+        // Refresh the cache with what we just wrote so the next read is free.
+        if (body) {
+            this.cacheSet(key, Buffer.isBuffer(body) ? body.toString('utf8') : body);
+        }
+    }
+    /**
+     * Insert into the bounded object cache, evicting the oldest entry when full.
+     */
+    static cacheSet(key, body) {
+        if (objectCache.size >= OBJECT_CACHE_MAX) {
+            let oldestKey = null;
+            let oldestTs = Infinity;
+            for (const [k, v] of objectCache) {
+                if (v.ts < oldestTs) {
+                    oldestTs = v.ts;
+                    oldestKey = k;
+                }
+            }
+            if (oldestKey)
+                objectCache.delete(oldestKey);
+        }
+        objectCache.set(key, { ts: Date.now(), body });
     }
 }
 exports.ConversationStorageService = ConversationStorageService;

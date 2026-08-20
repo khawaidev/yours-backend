@@ -10,6 +10,22 @@ const conversationMemoryService_1 = require("../services/conversationMemoryServi
 const rateLimitService_1 = require("../services/rateLimitService");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
+// Recent-messages responses are cached briefly per conversation so chat loads
+// don't re-read R2 metadata+chunks on every fetch. Invalidate on any new
+// message (POST) or reset (DELETE) so the cache never serves stale history.
+const MESSAGES_CACHE_TTL_MS = 10 * 1000;
+const messagesCache = new Map();
+function messagesCacheKey(userId, conversationId, limit) {
+    return userId + ':' + conversationId + ':' + limit;
+}
+function invalidateMessagesCache(userId, conversationId) {
+    const prefix = userId + ':' + conversationId + ':';
+    for (const key of messagesCache.keys()) {
+        if (key.startsWith(prefix)) {
+            messagesCache.delete(key);
+        }
+    }
+}
 /**
  * GET /api/v1/conversations
  * Fetch active conversations for user
@@ -92,6 +108,13 @@ router.get('/:id/messages', auth_1.requireAuth, async (req, res) => {
         if (!conv || conv.user_id !== userId) {
             return res.status(404).json({ success: false, error: 'Conversation not found' });
         }
+        const cacheKey = messagesCacheKey(userId, req.params.id, limit);
+        if (req.query.fresh !== '1') {
+            const hit = messagesCache.get(cacheKey);
+            if (hit && Date.now() - hit.ts < MESSAGES_CACHE_TTL_MS) {
+                return res.json({ success: true, messages: hit.messages });
+            }
+        }
         try {
             const r2Messages = await conversationStorageService_1.ConversationStorageService.readRecentMessages(userId, req.params.id, limit);
             if (r2Messages.length > 0) {
@@ -111,6 +134,7 @@ router.get('/:id/messages', auth_1.requireAuth, async (req, res) => {
                     created_at: m.timestamp,
                     _source: 'r2',
                 }));
+                messagesCache.set(cacheKey, { ts: Date.now(), messages });
                 return res.json({ success: true, messages });
             }
         }
@@ -143,6 +167,7 @@ router.get('/:id/messages', auth_1.requireAuth, async (req, res) => {
                 m.media_url = m.media_url || mediaByUrl[m.media_id] || null;
             }
         }
+        messagesCache.set(cacheKey, { ts: Date.now(), messages: messages || [] });
         return res.json({ success: true, messages });
     }
     catch (err) {
@@ -278,6 +303,8 @@ router.post('/:id/messages', auth_1.requireAuth, rateLimitService_1.messagingRat
             .from('conversations')
             .update({ last_message_at: now.toISOString() })
             .eq('id', conversationId);
+        // The history just changed — drop any cached copy so the next read is fresh.
+        invalidateMessagesCache(userId, conversationId);
         // 9. Persist both messages to R2 (source of truth for raw history).
         const storedMessages = [
             {
@@ -294,9 +321,9 @@ router.post('/:id/messages', auth_1.requireAuth, rateLimitService_1.messagingRat
             },
         ];
         conversationStorageService_1.ConversationStorageService.appendMessages(userId, conversationId, effectiveCharacterId, storedMessages)
-            .then(() => {
+            .then((meta) => {
             // 10. Background: periodic memory summary -> embed -> Qdrant upsert.
-            return conversationMemoryService_1.ConversationMemoryService.maybeSummarizeConversation(userId, conversationId, effectiveCharacterId);
+            return conversationMemoryService_1.ConversationMemoryService.maybeSummarizeConversation(userId, conversationId, effectiveCharacterId, meta);
         })
             .catch((err) => {
             console.warn('[conversations] R2 append / memory update failed:', err?.message);
@@ -306,7 +333,7 @@ router.post('/:id/messages', auth_1.requireAuth, rateLimitService_1.messagingRat
             affection: aiResult.affectionDelta || 0.3,
             familiarity: 0.2,
             mood: aiResult.moodDelta || 'happy',
-        }).catch(() => { });
+        }, relationship).catch(() => { });
         memoryService_1.MemoryService.extractMemoriesFromConversation(userId, effectiveCharacterId, userContent || '[Image]', finalText).catch(() => { });
         return res.status(201).json({
             success: true,
@@ -364,6 +391,7 @@ router.delete('/:id', auth_1.requireAuth, async (req, res) => {
             .from('conversations')
             .update({ last_message_at: null, updated_at: new Date().toISOString() })
             .eq('id', conversationId);
+        invalidateMessagesCache(userId, conversationId);
         return res.json({ success: true, message: 'Conversation reset' });
     }
     catch (err) {
