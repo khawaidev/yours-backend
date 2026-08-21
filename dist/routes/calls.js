@@ -99,30 +99,8 @@ router.post('/:id/end', auth_1.requireAuth, async (req, res) => {
         })
             .eq('id', callId);
         let insertedMessage = null;
-        if (conversationId) {
-            const durationText = formatDuration(durationSeconds);
-            const { data: msg, error: msgErr } = await config_1.supabaseAdmin
-                .from('messages')
-                .insert({
-                conversation_id: conversationId,
-                sender_type: 'character',
-                sender_id: characterId,
-                message_type: 'text',
-                content: `Call ended (${durationText})`,
-            })
-                .select()
-                .single();
-            if (msgErr) {
-                console.warn('[calls] insert call-ended message failed:', msgErr.message);
-            }
-            else {
-                insertedMessage = msg;
-                await config_1.supabaseAdmin
-                    .from('conversations')
-                    .update({ last_message_at: new Date().toISOString() })
-                    .eq('id', conversationId);
-            }
-        }
+        // No server-side "Call ended" bubble: the messaging page renders its
+        // own centered chip from sessionStorage after the call ends.
         return res.json({
             success: true,
             durationSeconds,
