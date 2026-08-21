@@ -136,6 +136,13 @@ class GeminiLiveService {
                         },
                         inputAudioTranscription: {},
                         outputAudioTranscription: {},
+                        // Commit end-of-speech faster so responses start sooner.
+                        realtimeInputConfig: {
+                            automaticActivityDetection: {
+                                endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
+                                silenceDurationMs: 300,
+                            },
+                        },
                     },
                 }));
                 sendJson({ type: 'connected', model, keyIndex: (startKey + Math.floor(attempt / models.length)) % keyPool.length });
