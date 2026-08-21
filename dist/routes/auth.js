@@ -82,6 +82,8 @@ router.post('/profile', auth_1.requireAuth, async (req, res) => {
             declared_age: declaredAge || 18,
             age_verified: (declaredAge || 18) >= 18,
             onboarding_state: 'started',
+            // Random default profile icon (usericon1..usericon5 in /assets/profile-icons).
+            profile_icon: 'usericon' + (1 + Math.floor(Math.random() * 5)),
         })
             .select()
             .single();
@@ -94,7 +96,7 @@ router.post('/profile', auth_1.requireAuth, async (req, res) => {
         });
         await config_1.supabaseAdmin.from('wallets').insert({ user_id: targetUserId, credits: 50.0 });
         await config_1.supabaseAdmin.from('subscriptions').insert({ user_id: targetUserId, plan_type: 'free' });
-        return res.status(201).json({ success: true, profile });
+        return res.status(201).json({ success: true, profile, created: true });
     }
     catch (err) {
         return res.status(500).json({ success: false, error: err.message });
@@ -107,7 +109,7 @@ router.post('/profile', auth_1.requireAuth, async (req, res) => {
  */
 router.patch('/profile', auth_1.requireAuth, async (req, res) => {
     try {
-        const { userId, displayName, declaredAge } = req.body;
+        const { userId, displayName, declaredAge, profileIcon } = req.body;
         if (!userId) {
             return res.status(400).json({ success: false, error: 'userId is required' });
         }
@@ -116,6 +118,13 @@ router.patch('/profile', auth_1.requireAuth, async (req, res) => {
         const updates = { updated_at: new Date().toISOString() };
         if (typeof displayName === 'string' && displayName.trim()) {
             updates.display_name = displayName.trim();
+        }
+        if (profileIcon !== undefined && profileIcon !== null && profileIcon !== '') {
+            // Only the five shipped icons are allowed.
+            if (!/^usericon[1-5]$/.test(String(profileIcon))) {
+                return res.status(400).json({ success: false, error: 'profileIcon must be usericon1..usericon5' });
+            }
+            updates.profile_icon = String(profileIcon);
         }
         if (declaredAge !== undefined && declaredAge !== null && declaredAge !== '') {
             const age = Number(declaredAge);
