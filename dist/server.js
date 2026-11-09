@@ -24,11 +24,13 @@ const payments_1 = __importDefault(require("./routes/payments"));
 const analytics_1 = __importDefault(require("./routes/analytics"));
 const rewards_1 = __importDefault(require("./routes/rewards"));
 const gifts_1 = __importDefault(require("./routes/gifts"));
+const ai_1 = __importDefault(require("./routes/ai"));
 const app = (0, express_1.default)();
 // Middleware
 app.use((0, cors_1.default)());
-app.use(express_1.default.json());
-app.use(express_1.default.urlencoded({ extended: true }));
+// Stateless AI generation round-trips base64 media, so allow large bodies.
+app.use(express_1.default.json({ limit: '40mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '40mb' }));
 // Health check endpoint
 app.get('/api/v1/health', (req, res) => {
     return res.json({
@@ -53,6 +55,8 @@ app.use('/api/v1/analytics', analytics_1.default);
 app.use('/api/v1/rewards', rewards_1.default);
 app.use('/api/v1/gifts', gifts_1.default);
 app.use('/api/v1/calls', calls_1.default);
+// Stateless AI inference/generation + one-time local migration endpoints.
+app.use('/api/v1/ai', ai_1.default);
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Endpoint not found' });

@@ -113,6 +113,25 @@ class R2Service {
         return { r2Key, url: `${config_1.CONFIG.R2.PUBLIC_DOMAIN}/${r2Key}` };
     }
     /**
+     * Best-effort delete of a generated chat media object by its public URL.
+     * Used only by the one-time local-first migration purge.
+     */
+    static async deleteByPublicUrl(url) {
+        if (!url)
+            return false;
+        const domain = (config_1.CONFIG.R2.PUBLIC_DOMAIN || '').replace(/\/$/, '');
+        if (!domain || url.indexOf(domain) !== 0)
+            return false;
+        const key = url.slice(domain.length + 1).split('?')[0];
+        if (!key)
+            return false;
+        await config_1.r2Client.send(new client_s3_1.DeleteObjectCommand({
+            Bucket: GENERATED_IMAGES_BUCKET,
+            Key: decodeURIComponent(key),
+        }));
+        return true;
+    }
+    /**
      * Insert media asset record into database
      */
     static async createMediaAsset(input) {

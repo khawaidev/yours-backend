@@ -1,0 +1,1264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23f4245e'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='38' font-weight='bold' fill='white' text-anchor='middle'%3EY%3C/text%3E%3C/svg%3E">
+<title>Yours API Test Lab</title>
+<style>
+  :root {
+    --bg: #0b080d;
+    --panel: #141017;
+    --panel-2: #1a1520;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --text: #f6f1f5;
+    --muted: #a79eac;
+    --faint: #746c7b;
+    --accent: #f4245e;
+    --accent-2: #ff7a45;
+    --green: #3ddc97;
+    --amber: #ffc857;
+    --red: #ff5c76;
+    --radius: 18px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1100px 520px at 85% -10%, rgba(244, 36, 94, 0.16), transparent 60%),
+      radial-gradient(900px 520px at -10% 110%, rgba(255, 122, 69, 0.10), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font: 14px/1.55 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: #ff8aa8; }
+  header {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 26px 22px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 13px; }
+  .mark {
+    width: 42px; height: 42px; border-radius: 13px;
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 20px; color: #fff;
+    background: linear-gradient(140deg, var(--accent), #ff6a3d);
+    box-shadow: 0 10px 30px rgba(244, 36, 94, 0.35);
+  }
+  h1 { font-size: 20px; line-height: 1.15; margin: 0; letter-spacing: -0.02em; }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+  .statusbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 11px; border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+    font-size: 12px; color: var(--muted);
+    white-space: nowrap;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
+  .dot.good { background: var(--green); box-shadow: 0 0 0 4px rgba(61, 220, 151, 0.12); }
+  .dot.bad { background: var(--red); box-shadow: 0 0 0 4px rgba(255, 92, 118, 0.12); }
+  .dot.warn { background: var(--amber); box-shadow: 0 0 0 4px rgba(255, 200, 87, 0.12); }
+  main { max-width: 1280px; margin: 0 auto; padding: 6px 22px 46px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 16px; }
+  .tab {
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.025);
+    color: var(--muted);
+    padding: 10px 14px;
+    border-radius: 12px;
+    font: inherit; font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    transition: 0.16s ease;
+    display: inline-flex; align-items: center; gap: 9px;
+  }
+  .tab:hover { color: var(--text); border-color: var(--line-strong); }
+  .tab[aria-selected="true"] {
+    color: #fff;
+    border-color: rgba(244, 36, 94, 0.5);
+    background: linear-gradient(180deg, rgba(244, 36, 94, 0.22), rgba(244, 36, 94, 0.08));
+    box-shadow: 0 8px 28px rgba(244, 36, 94, 0.16);
+  }
+  .tab .tag {
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700;
+  }
+  .layout { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 16px; align-items: start; }
+  .card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)), var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+  }
+  .form-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .form-top h2 { margin: 6px 0 2px; font-size: 18px; letter-spacing: -0.01em; }
+  .form-top p { margin: 0; color: var(--muted); font-size: 12.5px; max-width: 52ch; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border-radius: 7px; padding: 3px 8px;
+    background: rgba(244, 36, 94, 0.12);
+    border: 1px solid rgba(244, 36, 94, 0.28);
+    color: #ff9db5;
+    font: 600 11px/1.4 var(--mono);
+  }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 13px 0 4px; }
+  .chip {
+    font-size: 11px; color: var(--muted);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 9px;
+    background: rgba(255, 255, 255, 0.025);
+    white-space: nowrap;
+  }
+  .chip strong { color: #d9d1de; font-weight: 600; }
+  form { margin-top: 8px; }
+  .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field.full { grid-column: 1 / -1; }
+  .field > label, .field-label {
+    font-size: 12px; font-weight: 650; color: #ddd5e1;
+    display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .req { color: var(--accent); }
+  .hint { font-size: 11px; color: var(--faint); line-height: 1.4; }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    background: #0e0b11;
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 11px;
+    font: inherit; font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  textarea { min-height: 84px; resize: vertical; line-height: 1.5; }
+  textarea.small { min-height: 58px; }
+  input:focus, textarea:focus, select:focus {
+    border-color: rgba(244, 36, 94, 0.65);
+    box-shadow: 0 0 0 3px rgba(244, 36, 94, 0.12);
+  }
+  input::placeholder, textarea::placeholder { color: #5f5866; }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 32px; }
+  .number-row { display: flex; gap: 6px; align-items: center; }
+  .number-row input { flex: 1; }
+  .icon-btn {
+    flex: none; width: 39px; height: 39px;
+    border-radius: 10px; border: 1px solid var(--line-strong);
+    background: rgba(255, 255, 255, 0.03); color: var(--muted);
+    cursor: pointer; display: grid; place-items: center; font-size: 15px;
+  }
+  .icon-btn:hover { color: var(--text); border-color: rgba(244, 36, 94, 0.45); }
+  .quick { display: flex; gap: 5px; flex-wrap: wrap; }
+  .quick button {
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 2px 7px;
+    font: 600 10.5px/1.5 var(--mono);
+    cursor: pointer;
+  }
+  .quick button:hover { color: #fff; border-color: rgba(244, 36, 94, 0.45); background: rgba(244, 36, 94, 0.12); }
+  .check {
+    flex-direction: row; align-items: center; gap: 9px;
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 11px; background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+  }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .check span { font-size: 12.5px; color: #ddd5e1; }
+  .dropzone {
+    position: relative;
+    border: 1px dashed var(--line-strong);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.018);
+    min-height: 112px;
+    display: grid; place-items: center;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: 0.16s ease;
+  }
+  .dropzone:hover, .dropzone.dragging { border-color: rgba(244, 36, 94, 0.6); background: rgba(244, 36, 94, 0.06); }
+  .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+  .dropzone.has-image input[type="file"] { display: none; }
+  .dz-inner { padding: 16px; pointer-events: none; }
+  .dz-inner strong { display: block; font-size: 12.5px; color: #ddd5e1; margin-bottom: 2px; }
+  .dz-inner small { color: var(--faint); font-size: 11px; }
+  .dz-preview { width: 100%; display: none; }
+  .dz-preview img { display: block; width: 100%; max-height: 210px; object-fit: contain; background: #09070b; }
+  .dz-preview .dz-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 10px; font-size: 11px; color: var(--muted); background: rgba(0, 0, 0, 0.35); }
+  .dz-preview button { border: 0; background: transparent; color: #ff8aa8; font: inherit; cursor: pointer; padding: 0; }
+  .dropzone.has-image .dz-inner { display: none; }
+  .dropzone.has-image .dz-preview { display: block; }
+  .size-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 0.9fr); gap: 7px; }
+  .submit-row { display: flex; gap: 9px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  button.primary, button.ghost, a.btn {
+    font: inherit; font-size: 13px; font-weight: 650;
+    border-radius: 11px; padding: 11px 16px;
+    cursor: pointer; border: 1px solid transparent;
+    text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: 0.16s ease;
+  }
+  button.primary {
+    color: #fff;
+    background: linear-gradient(140deg, var(--accent), #ff5c3d);
+    box-shadow: 0 10px 30px rgba(244, 36, 94, 0.28);
+  }
+  button.primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  button.primary:disabled { opacity: 0.55; cursor: wait; transform: none; filter: none; }
+  button.ghost, a.btn.ghost {
+    color: var(--muted); background: rgba(255, 255, 255, 0.035); border-color: var(--line-strong);
+  }
+  button.ghost:hover, a.btn.ghost:hover { color: #fff; border-color: rgba(244, 36, 94, 0.45); }
+  a.btn.solid { color: #fff; background: rgba(244, 36, 94, 0.16); border-color: rgba(244, 36, 94, 0.4); }
+  a.btn.solid:hover { background: rgba(244, 36, 94, 0.26); }
+  .result-card { min-height: 300px; position: sticky; top: 14px; }
+  .empty { display: grid; place-items: center; min-height: 280px; color: var(--faint); text-align: center; padding: 20px; }
+  .empty .big { font-size: 34px; margin-bottom: 8px; opacity: 0.55; }
+  .empty p { margin: 0; font-size: 12.5px; max-width: 34ch; }
+  .result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 10px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  .badge.running { color: var(--amber); border-color: rgba(255, 200, 87, 0.35); background: rgba(255, 200, 87, 0.08); }
+  .badge.done { color: var(--green); border-color: rgba(61, 220, 151, 0.35); background: rgba(61, 220, 151, 0.08); }
+  .badge.error { color: var(--red); border-color: rgba(255, 92, 118, 0.4); background: rgba(255, 92, 118, 0.08); }
+  .badge.queued { color: var(--muted); }
+  .spinner {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 2px solid rgba(255, 200, 87, 0.25); border-top-color: var(--amber);
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .elapsed { font: 600 11.5px/1 var(--mono); color: var(--faint); }
+  .result-msg { margin: 13px 0 10px; font-size: 14.5px; font-weight: 600; overflow-wrap: anywhere; }
+  .result-msg.error { color: #ffb3c1; }
+  .bar { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; position: relative; }
+  .bar > span {
+    display: block; height: 100%; width: 0%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.6s ease;
+  }
+  .bar > span.indeterminate {
+    width: 36% !important;
+    animation: sweep 1.15s ease-in-out infinite;
+  }
+  @keyframes sweep { 0% { transform: translateX(-110%); } 100% { transform: translateX(320%); } }
+  .logs {
+    margin: 12px 0 0; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid var(--line);
+    background: #0b080d;
+    font: 11px/1.7 var(--mono); color: #918897;
+    max-height: 130px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .media {
+    margin: 14px 0 0; border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--line); background: #08060a;
+  }
+  .media img, .media video { display: block; width: 100%; max-height: 460px; object-fit: contain; background: #08060a; }
+  .media-size { margin-top: 7px; font-size: 11px; color: var(--faint); text-align: center; }
+  .media-size strong { color: #cfc6d4; font-family: var(--mono); font-weight: 600; }
+  .meta { margin: 13px 0 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; font-size: 11.5px; }
+  .meta dt { color: var(--faint); font-weight: 600; }
+  .meta dd { margin: 0; color: #cfc6d4; overflow-wrap: anywhere; font-family: var(--mono); font-size: 11px; }
+  .actions { margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .error-box { margin-top: 13px; border: 1px solid rgba(255, 92, 118, 0.32); background: rgba(255, 92, 118, 0.07); border-radius: 11px; padding: 12px; }
+  .error-box .err-line { font: 600 12px/1.55 var(--mono); color: #ffb3c1; overflow-wrap: anywhere; white-space: pre-wrap; }
+  details { margin-top: 10px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+  details pre {
+    margin: 8px 0 0; padding: 10px; border-radius: 8px;
+    background: #0a070c; border: 1px solid var(--line);
+    font: 11px/1.55 var(--mono); color: #b7aebc;
+    max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .note { margin: 12px 0 0; font-size: 11.5px; color: var(--faint); }
+  .note.warn { color: #e7bc6c; }
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 16px);
+    background: #211a26; border: 1px solid var(--line-strong); color: var(--text);
+    border-radius: 11px; padding: 10px 15px; font-size: 12.5px;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+    opacity: 0; pointer-events: none; transition: 0.2s ease; z-index: 20;
+    max-width: min(560px, calc(100vw - 32px));
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.error { border-color: rgba(255, 92, 118, 0.45); }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 1fr; }
+    .result-card { position: static; }
+  }
+  @media (max-width: 640px) {
+    header, main { padding-left: 14px; padding-right: 14px; }
+    .fields { grid-template-columns: 1fr; }
+    .size-grid { grid-template-columns: 1fr 1fr; }
+    .size-grid select { grid-column: 1 / -1; }
+    .card { padding: 14px; border-radius: 15px; }
+    .form-top .ghost { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="mark">Y</div>
+    <div>
+      <h1>API Test Lab</h1>
+      <p>deAPI · Qwen Edit &nbsp;•&nbsp; FLUX.2 Klein &nbsp;•&nbsp; MiniMax H3 &nbsp;•&nbsp; LTX-2.5</p>
+    </div>
+  </div>
+  <div class="statusbar" id="statusbar">
+    <span class="status-pill"><span class="dot"></span> Checking env…</span>
+  </div>
+</header>
+
+<main>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="API service"></nav>
+
+  <div class="layout">
+    <section class="card" aria-label="Test configuration">
+      <div class="form-top">
+        <div>
+          <span class="pill" id="modelPill"></span>
+          <h2 id="serviceTitle"></h2>
+          <p id="serviceDesc"></p>
+        </div>
+        <button class="ghost" id="defaultsBtn" type="button">Use live model defaults</button>
+      </div>
+      <div class="chips" id="serviceMeta"></div>
+      <div class="chips" id="limitsNote" style="margin-top:0"></div>
+
+      <form id="testForm" novalidate>
+        <div class="fields" id="fields"></div>
+        <div class="submit-row">
+          <button class="primary" id="runBtn" type="submit">Run test</button>
+          <button class="ghost" id="clearBtn" type="button">Clear result</button>
+          <span class="hint" id="runHint">Credentials stay in the backend .env — never sent to this page.</span>
+        </div>
+      </form>
+    </section>
+
+    <section class="card result-card" id="resultCard" aria-live="polite">
+      <div class="empty">
+        <div>
+          <div class="big">◇</div>
+          <p>Pick a service, fill in the generation settings and run a test. The generated image or video will appear here.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------------------------------------------------------------------
+  // Service configuration
+  // ---------------------------------------------------------------------
+  const SERVICES = {
+    'deapi-image': {
+      label: 'deAPI',
+      tag: 'Qwen edit',
+      title: 'Qwen Image Edit Plus NF4',
+      model: 'QwenImageEdit_Plus_NF4',
+      desc: 'Multipart image edit against the live deAPI v2 endpoint, followed by job polling.',
+      meta: ['POST /api/v2/images/edits', 'model: QwenImageEdit_Plus_NF4', 'poll: /api/v2/jobs/{id}', 'single input image'],
+      defaults: {
+        prompt: 'Make the jacket a black leather jacket. Keep the same face, pose, expression and background.',
+        negativePrompt: 'blur, darkness, noise',
+        width: 768,
+        height: 768,
+        sizePreset: '768 × 768',
+        steps: 40,
+        guidance: 7.5,
+        seed: '',
+        quality: '',
+        enhancePrompt: false,
+      },
+      fields: [
+        { name: 'prompt', type: 'textarea', label: 'Edit prompt', required: true, full: true, rows: 4,
+          placeholder: 'Describe the edit…' },
+        { name: 'negativePrompt', type: 'textarea', label: 'Negative prompt', full: true, rows: 2,
+          hint: 'sent as negative_prompt' },
+        { name: 'image', type: 'image', label: 'Input image', required: true, full: true,
+          hint: 'Sent as the multipart “image” field. Up to 10 MB, 64–5000 px per side.' },
+        { name: 'sizePreset', type: 'size', label: 'Output size', widthName: 'width', heightName: 'height',
+          presets: ['Custom', '256 × 256', '512 × 512', '768 × 768', '768 × 1024', '1024 × 768', '1024 × 1024'],
+          min: 256, max: 1024, step: 1,
+          hint: 'Live limits: 256–1024 px. This model declares supports_custom_output_size: false, so width/height are ignored and the provider returns its own resolution — use FLUX.2 Klein for controllable output size.' },
+        { name: 'steps', type: 'number', label: 'Steps', min: 1, max: 50, step: 1, quick: [10, 20, 30, 40, 50],
+          hint: 'Live default: 40 · allowed 1–50.' },
+        { name: 'guidance', type: 'number', label: 'Guidance', min: 0, max: 30, step: 0.1, quick: [1, 3.5, 7.5, 10],
+          hint: 'Accepted, but this model declares supports_guidance: false.' },
+        { name: 'seed', type: 'seed', label: 'Seed', min: 0, max: 4294967295, step: 1,
+          hint: 'Blank = a random seed is generated and logged by the harness.' },
+        { name: 'quality', type: 'select', label: 'Quality', options: [
+            { value: '', label: '— omit —' }, 'low', 'medium', 'high'
+          ], hint: 'This model has no quality_options; omitted by default.' },
+        { name: 'enhancePrompt', type: 'checkbox', label: 'Enhance prompt', full: true,
+          hint: 'Only sent when checked. Requires a prompt-booster guide for the model.' },
+      ],
+    },
+
+    'deapi-flux': {
+      label: 'deAPI',
+      tag: 'FLUX.2 Klein',
+      title: 'FLUX.2 Klein 4B BF16',
+      model: 'Flux_2_Klein_4B_BF16',
+      desc: 'Multipart image-to-image generation with FLUX.2 Klein. Width and height are sent directly to the API.',
+      meta: ['POST /api/v2/images/edits', 'model: Flux_2_Klein_4B_BF16', 'steps fixed at 4', 'up to 3 input images'],
+      defaults: {
+        prompt: 'Apply cinematic color grading with warm highlights and cool shadows, enhance texture details and add soft atmospheric lighting.',
+        width: 1024,
+        height: 1024,
+        sizePreset: '1024 × 1024',
+        steps: 4,
+        seed: 4280952837,
+      },
+      fields: [
+        { name: 'prompt', type: 'textarea', label: 'Generation prompt', required: true, full: true, rows: 4,
+          placeholder: 'Describe the transformation…' },
+        { name: 'image', type: 'image', label: 'Source image', required: true, full: true,
+          hint: 'Sent as the multipart “image” field. The model accepts up to 3 input images; this harness sends one.' },
+        { name: 'sizePreset', type: 'size', label: 'Output size', widthName: 'width', heightName: 'height',
+          presets: ['Custom', '512 × 512', '512 × 768', '768 × 512', '768 × 768', '768 × 1024', '1024 × 768', '1024 × 1024', '1344 × 768', '768 × 1344', '1536 × 1024', '1024 × 1536'],
+          min: 256, max: 1536, step: 16,
+          hint: 'Live limits: 256–1536 px, resolution step 16. These values are sent as the width and height fields.' },
+        { name: 'steps', type: 'number', label: 'Steps', min: 4, max: 4, step: 1, quick: [4],
+          hint: 'This model accepts 4 steps only.' },
+        { name: 'seed', type: 'seed', label: 'Seed', min: 0, max: 4294967295, step: 1,
+          hint: 'Blank = a random seed is generated and logged by the harness.' },
+      ],
+    },
+
+    'deapi-video': {
+      label: 'deAPI',
+      tag: 'MiniMax video',
+      title: 'MiniMax H3 33B Turbo INT8',
+      model: 'MiniMaxH3_33B_Turbo_INT8',
+      desc: 'Animates a first-frame image. Submits the multipart job, then polls until the MP4 is ready.',
+      meta: ['POST /api/v2/videos/animations', 'model: MiniMaxH3_33B_Turbo_INT8', 'first_frame_image', 'fps fixed at 24'],
+      defaults: {
+        prompt: 'Animate the subject with smooth natural motion, a subtle smile and a gentle head turn. Static camera, soft natural lighting.',
+        negativePrompt: '',
+        width: 1344,
+        height: 768,
+        sizePreset: '1344 × 768',
+        seconds: 5,
+        seed: '',
+      },
+      fields: [
+        { name: 'prompt', type: 'textarea', label: 'Animation prompt', required: true, full: true, rows: 4,
+          placeholder: 'Describe the motion…' },
+        { name: 'image', type: 'image', label: 'First frame image', required: true, full: true,
+          hint: 'Sent as first_frame_image. Keyframe mode cannot be mixed with reference arrays.' },
+        { name: 'sizePreset', type: 'size', label: 'Output size', widthName: 'width', heightName: 'height',
+          presets: ['Custom', '512 × 512', '768 × 768', '768 × 1344', '1344 × 768', '512 × 768', '1024 × 512'],
+          min: 512, max: 1344, step: 32,
+          hint: 'Live limits: 512–1344 px, multiples of 32, max_pixels 1,032,192.' },
+        { name: 'seconds', type: 'number', label: 'Duration (seconds)', min: 3, max: 10, step: 1, quick: [3, 4, 5, 6, 8, 10],
+          hint: 'The request always sends fps 24 and frames = seconds × 24 (5 s → 120 frames). Live frame range 56–243.' },
+        { name: 'seed', type: 'seed', label: 'Seed', min: 0, max: 4294967295, step: 1,
+          hint: 'Blank = a random seed is generated and logged by the harness.' },
+        { name: 'negativePrompt', type: 'textarea', label: 'Negative prompt', full: true, rows: 2, optional: true,
+          placeholder: 'Optional — sent but dropped by this model' },
+      ],
+    },
+
+    'deapi-video-ltx': {
+      label: 'deAPI',
+      tag: 'LTX video',
+      title: 'LTX-2.5 22B Distilled INT8',
+      model: 'Ltx2_5_22B_Dist_INT8',
+      desc: 'Animates a first-frame image with LTX-2.5. Submits the multipart job, then polls until the MP4 is ready.',
+      meta: ['POST /api/v2/videos/animations', 'model: Ltx2_5_22B_Dist_INT8', 'first_frame_image', 'fps fixed at 24'],
+      defaults: {
+        prompt: 'The white horse tosses its head and walks forward through the meadow, its long mane lifting and settling with each stride. Morning mist parts around its legs and drifts across the frame. The low sun flares softly through the haze as the camera drifts back to keep pace. Grass ripples in a light breeze. Hooves thud softly on damp earth, birds call in the distance, and wind moves through the grass.',
+        width: 768,
+        height: 512,
+        sizePreset: '768 × 512',
+        seconds: 5,
+        seed: 1478047286,
+      },
+      fields: [
+        { name: 'prompt', type: 'textarea', label: 'Animation prompt', required: true, full: true, rows: 4,
+          placeholder: 'Describe the motion…' },
+        { name: 'image', type: 'image', label: 'First frame image', required: true, full: true,
+          hint: 'Sent as first_frame_image.' },
+        { name: 'sizePreset', type: 'size', label: 'Output size', widthName: 'width', heightName: 'height',
+          presets: ['Custom', '512 × 512', '768 × 512', '512 × 768', '768 × 768', '1024 × 576', '576 × 1024', '1024 × 768', '768 × 1024', '1344 × 768', '768 × 1344'],
+          min: 512, max: 1344, step: 64,
+          hint: 'Live limits: 512–1344 px, multiples of 64, max_pixels 1,032,192.' },
+        { name: 'seconds', type: 'number', label: 'Duration (seconds)', min: 3, max: 10, step: 1, quick: [3, 4, 5, 6, 8, 10],
+          hint: 'The request always sends fps 24 and frames = seconds × 24 (5 s → 120 frames). Live frame range 49–241.' },
+        { name: 'seed', type: 'seed', label: 'Seed', min: 0, max: 4294967295, step: 1,
+          hint: 'Blank = a random seed is generated and logged by the harness.' },
+      ],
+    },
+  };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  const state = {
+    service: 'deapi-image',
+    keyIndex: 0,
+    keys: [],
+    env: null,
+    forms: {},
+    files: {},
+    modelInfo: {},
+    activeJob: null,
+    pollTimer: null,
+    tickTimer: null,
+    startedAt: 0,
+    running: false,
+  };
+
+  Object.entries(SERVICES).forEach(([key, cfg]) => {
+    state.forms[key] = { ...cfg.defaults };
+    state.files[key] = null;
+  });
+
+  const $ = (id) => document.getElementById(id);
+  const tabsEl = $('tabs');
+  const fieldsEl = $('fields');
+  const formEl = $('testForm');
+  const resultCard = $('resultCard');
+  const statusbar = $('statusbar');
+  const toastEl = $('toast');
+
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[ch]));
+  }
+
+  function fmtDuration(ms) {
+    if (!Number.isFinite(ms) || ms < 0) ms = 0;
+    const seconds = ms / 1000;
+    if (seconds < 60) return `${seconds.toFixed(1)}s`;
+    const mins = Math.floor(seconds / 60);
+    return `${mins}m ${Math.floor(seconds % 60)}s`;
+  }
+
+  let toastTimer = null;
+  function toast(message, isError = false) {
+    toastEl.textContent = message;
+    toastEl.classList.toggle('error', isError);
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 4500);
+  }
+
+  // ---------------------------------------------------------------------
+  // Tabs
+  // ---------------------------------------------------------------------
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    Object.entries(SERVICES).forEach(([key, cfg]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab';
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', String(state.service === key));
+      btn.innerHTML = `${esc(cfg.label)} <span class="tag">${esc(cfg.tag)}</span>`;
+      btn.addEventListener('click', () => selectService(key));
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  function selectService(key) {
+    if (!SERVICES[key]) return;
+    if (state.service !== key) {
+      state.service = key;
+      renderTabs();
+      renderService();
+      if (!state.modelInfo[key]) loadModelInfo(true);
+    }
+    if (location.hash !== `#${key}`) {
+      history.replaceState(null, '', `#${key}`);
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Header / env status
+  // ---------------------------------------------------------------------
+  function renderStatus() {
+    if (!state.env) {
+      statusbar.innerHTML = '<span class="status-pill"><span class="dot"></span> Checking env…</span>';
+      return;
+    }
+    const { deapi } = state.env;
+    statusbar.innerHTML = `
+      <span class="status-pill" title="${deapi.configured ? 'deAPI keys loaded from .env' : 'No deAPI keys in .env'}">
+        <span class="dot ${deapi.configured ? 'good' : 'bad'}"></span>
+        deAPI · ${deapi.keys.length} key${deapi.keys.length === 1 ? '' : 's'}
+      </span>
+      <span class="status-pill"><span class="dot warn"></span> local only</span>
+    `;
+  }
+
+  // ---------------------------------------------------------------------
+  // Form rendering
+  // ---------------------------------------------------------------------
+  function renderService() {
+    const cfg = SERVICES[state.service];
+    $('modelPill').textContent = cfg.model;
+    $('serviceTitle').textContent = cfg.title;
+    $('serviceDesc').textContent = cfg.desc;
+    $('defaultsBtn').textContent = 'Use live model defaults';
+
+    const metaEl = $('serviceMeta');
+    metaEl.innerHTML = cfg.meta.map((m) => `<span class="chip">${esc(m)}</span>`).join('');
+    metaEl.insertAdjacentHTML('beforeend', keySelectMarkup());
+
+    renderLimitsNote();
+    renderFields();
+    renderResult(state.activeJob);
+  }
+
+  function keySelectMarkup() {
+    if (!state.keys.length) {
+      return '<span class="chip" style="color:#ff9db5">No deAPI keys loaded</span>';
+    }
+    const opts = state.keys.map((k) =>
+      `<option value="${k.index}" ${k.index === state.keyIndex ? 'selected' : ''}>${esc(k.label)} · ${esc(k.masked)}</option>`
+    ).join('');
+    return `<label class="chip" style="display:inline-flex;gap:6px;align-items:center">key
+      <select id="keySelect" style="width:auto;border:0;background:#0e0b11;padding:2px 24px 2px 6px;font-size:11px;border-radius:6px">${opts}</select>
+    </label>`;
+  }
+
+  function renderFields() {
+    const cfg = SERVICES[state.service];
+    const values = state.forms[state.service];
+    fieldsEl.innerHTML = '';
+
+    cfg.fields.forEach((field) => {
+      if (field.type === 'size') {
+        fieldsEl.appendChild(renderSizeField(field, values));
+        return;
+      }
+      const wrap = document.createElement('div');
+      wrap.className = `field${field.full ? ' full' : ''}`;
+
+      if (field.type === 'checkbox') {
+        wrap.className += ' check';
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = `f-${field.name}`;
+        input.checked = Boolean(values[field.name]);
+        input.addEventListener('change', () => { values[field.name] = input.checked; });
+        const span = document.createElement('span');
+        span.innerHTML = `${esc(field.label)}${field.hint ? ` <span class="hint">${esc(field.hint)}</span>` : ''}`;
+        wrap.append(input, span);
+        fieldsEl.appendChild(wrap);
+        return;
+      }
+
+      const label = document.createElement('label');
+      label.htmlFor = `f-${field.name}`;
+      label.innerHTML = `${esc(field.label)}${field.required ? ' <span class="req">*</span>' : ''}${field.optional ? ' <span class="hint">optional</span>' : ''}`;
+      wrap.appendChild(label);
+
+      if (field.type === 'textarea') {
+        const el = document.createElement('textarea');
+        el.id = `f-${field.name}`;
+        el.rows = field.rows || 3;
+        if (field.rows <= 2) el.classList.add('small');
+        el.placeholder = field.placeholder || '';
+        el.value = values[field.name] ?? '';
+        el.addEventListener('input', () => { values[field.name] = el.value; });
+        wrap.appendChild(el);
+      } else if (field.type === 'image') {
+        wrap.appendChild(renderImageField(field));
+      } else if (field.type === 'select') {
+        const el = document.createElement('select');
+        el.id = `f-${field.name}`;
+        (field.options || []).forEach((opt) => {
+          const value = typeof opt === 'string' ? opt : opt.value;
+          const text = typeof opt === 'string' ? opt : opt.label;
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = text;
+          if (String(values[field.name] ?? '') === String(value)) option.selected = true;
+          el.appendChild(option);
+        });
+        el.addEventListener('change', () => { values[field.name] = el.value; });
+        wrap.appendChild(el);
+      } else if (field.type === 'seed') {
+        const row = document.createElement('div');
+        row.className = 'number-row';
+        const el = document.createElement('input');
+        el.type = 'number';
+        el.id = `f-${field.name}`;
+        el.min = field.min; el.max = field.max; el.step = field.step || 1;
+        el.placeholder = 'random';
+        el.value = values[field.name] ?? '';
+        el.addEventListener('input', () => { values[field.name] = el.value; });
+        const dice = document.createElement('button');
+        dice.type = 'button';
+        dice.className = 'icon-btn';
+        dice.title = 'Random seed';
+        dice.textContent = '⚄';
+        dice.addEventListener('click', () => {
+          el.value = String(Math.floor(Math.random() * 4294967295));
+          values[field.name] = el.value;
+        });
+        row.append(el, dice);
+        wrap.appendChild(row);
+      } else {
+        const el = document.createElement('input');
+        el.type = 'number';
+        el.id = `f-${field.name}`;
+        el.min = field.min; el.max = field.max; el.step = field.step || 1;
+        el.value = values[field.name] ?? '';
+        el.addEventListener('input', () => { values[field.name] = el.value; });
+        wrap.appendChild(el);
+        if (Array.isArray(field.quick) && field.quick.length) {
+          const quick = document.createElement('div');
+          quick.className = 'quick';
+          field.quick.forEach((q) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = q;
+            b.addEventListener('click', () => { el.value = String(q); values[field.name] = q; });
+            quick.appendChild(b);
+          });
+          wrap.appendChild(quick);
+        }
+      }
+
+      if (field.hint) {
+        const hint = document.createElement('div');
+        hint.className = 'hint';
+        hint.textContent = field.hint;
+        wrap.appendChild(hint);
+      }
+      fieldsEl.appendChild(wrap);
+    });
+
+    const keySelect = $('keySelect');
+    if (keySelect) {
+      keySelect.addEventListener('change', () => {
+        state.keyIndex = Number(keySelect.value);
+        state.modelInfo[state.service] = null;
+        loadModelInfo(true);
+      });
+    }
+  }
+
+  function renderSizeField(field, values) {
+    const wrap = document.createElement('div');
+    wrap.className = 'field full';
+    const label = document.createElement('div');
+    label.className = 'field-label';
+    label.textContent = field.label;
+    wrap.appendChild(label);
+
+    const grid = document.createElement('div');
+    grid.className = 'size-grid';
+
+    const preset = document.createElement('select');
+    preset.innerHTML = '<option value="">Custom size</option>' +
+      field.presets.filter((p) => p !== 'Custom').map((p) => `<option>${esc(p)}</option>`).join('');
+    if (values.sizePreset && values.sizePreset !== 'Custom') preset.value = values.sizePreset;
+
+    const width = document.createElement('input');
+    width.type = 'number'; width.id = `f-${field.widthName}`;
+    width.min = field.min; width.max = field.max; width.step = field.step;
+    width.placeholder = 'width'; width.title = 'width';
+    width.value = values[field.widthName] ?? '';
+
+    const height = document.createElement('input');
+    height.type = 'number'; height.id = `f-${field.heightName}`;
+    height.min = field.min; height.max = field.max; height.step = field.step;
+    height.placeholder = 'height'; height.title = 'height';
+    height.value = values[field.heightName] ?? '';
+
+    preset.addEventListener('change', () => {
+      values.sizePreset = preset.value;
+      const match = /^(\d+)\s*×\s*(\d+)$/.exec(preset.value || '');
+      if (match) {
+        width.value = match[1];
+        height.value = match[2];
+        values[field.widthName] = Number(match[1]);
+        values[field.heightName] = Number(match[2]);
+      }
+    });
+    width.addEventListener('input', () => {
+      values[field.widthName] = width.value;
+      values.sizePreset = 'Custom';
+      preset.value = '';
+    });
+    height.addEventListener('input', () => {
+      values[field.heightName] = height.value;
+      values.sizePreset = 'Custom';
+      preset.value = '';
+    });
+
+    grid.append(preset, width, height);
+    wrap.appendChild(grid);
+    if (field.hint) {
+      const hint = document.createElement('div');
+      hint.className = 'hint';
+      hint.textContent = field.hint;
+      wrap.appendChild(hint);
+    }
+    return wrap;
+  }
+
+  function renderImageField(field) {
+    const box = document.createElement('div');
+    box.className = 'dropzone';
+    box.id = `dz-${field.name}`;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/png,image/jpeg,image/webp,image/gif,image/bmp';
+    input.id = `f-${field.name}`;
+
+    const inner = document.createElement('div');
+    inner.className = 'dz-inner';
+    inner.innerHTML = '<strong>Click or drop an image here</strong><small>PNG · JPG · WebP · max 10 MB</small>';
+
+    const preview = document.createElement('div');
+    preview.className = 'dz-preview';
+    preview.innerHTML = '<img alt="Selected input preview"><div class="dz-bar"><span class="dz-name"></span><button type="button" class="dz-remove">remove</button></div>';
+
+    box.append(input, inner, preview);
+
+    const existing = state.files[state.service];
+    if (existing?.dataUrl) {
+      box.classList.add('has-image');
+      preview.querySelector('img').src = existing.dataUrl;
+      preview.querySelector('.dz-name').textContent = `${existing.name} · ${(existing.size / 1024).toFixed(0)} KB`;
+    }
+
+    const readFile = (file) => {
+      if (!file) return;
+      if (!/^image\//.test(file.type)) {
+        toast('Please choose an image file.', true);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast(`Image is ${(file.size / 1024 / 1024).toFixed(1)} MB — the provider limit is 10 MB.`, true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.files[state.service] = {
+          dataUrl: String(reader.result),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        };
+        box.classList.add('has-image');
+        preview.querySelector('img').src = String(reader.result);
+        preview.querySelector('.dz-name').textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+      };
+      reader.onerror = () => toast('Could not read that image file.', true);
+      reader.readAsDataURL(file);
+    };
+
+    input.addEventListener('change', () => readFile(input.files?.[0]));
+    ['dragenter', 'dragover'].forEach((evt) =>
+      box.addEventListener(evt, (e) => { e.preventDefault(); box.classList.add('dragging'); })
+    );
+    ['dragleave', 'drop'].forEach((evt) =>
+      box.addEventListener(evt, (e) => { e.preventDefault(); box.classList.remove('dragging'); })
+    );
+    box.addEventListener('drop', (e) => readFile(e.dataTransfer?.files?.[0]));
+    preview.querySelector('.dz-remove').addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      state.files[state.service] = null;
+      input.value = '';
+      box.classList.remove('has-image');
+    });
+
+    return box;
+  }
+
+  // ---------------------------------------------------------------------
+  // Live model info (deAPI)
+  // ---------------------------------------------------------------------
+  function renderLimitsNote() {
+    const el = $('limitsNote');
+    const info = state.modelInfo[state.service];
+    if (!info?.model?.info) {
+      el.innerHTML = '<span class="chip">Live model limits not loaded</span>';
+      return;
+    }
+    const { limits = {}, defaults = {}, features = {} } = info.model.info;
+    const chips = [];
+    if (limits.min_width && limits.max_width) chips.push(`${limits.min_width}–${limits.max_width} px wide`);
+    if (limits.min_height && limits.max_height) chips.push(`${limits.min_height}–${limits.max_height} px tall`);
+    if (limits.resolution_step) chips.push(`resolution step ${limits.resolution_step}`);
+    if (limits.min_steps || limits.max_steps) chips.push(`steps ${limits.min_steps ?? '?'}–${limits.max_steps ?? '?'}`);
+    if (limits.min_frames || limits.max_frames) {
+      const minSec = limits.min_frames ? Math.ceil(limits.min_frames / 24) : null;
+      const maxSec = limits.max_frames ? Math.floor(limits.max_frames / 24) : null;
+      if (minSec != null && maxSec != null) chips.push(`seconds ${minSec}–${maxSec}`);
+      chips.push(`frames ${limits.min_frames}–${limits.max_frames} @ 24 fps`);
+    }
+    if (limits.min_fps || limits.max_fps) chips.push(`fps ${limits.min_fps}–${limits.max_fps} fixed`);
+    if (limits.max_pixels) chips.push(`max ${limits.max_pixels.toLocaleString()} px²`);
+    if (defaults.width && defaults.height) chips.push(`default ${defaults.width}×${defaults.height}`);
+    chips.push(`negative prompt: ${features.supports_negative_prompt ? 'yes' : 'no'}`);
+    chips.push(`guidance: ${features.supports_guidance ? 'yes' : 'no'}`);
+    if (features.supports_custom_output_size === false) chips.push('⚠ custom width/height ignored');
+    el.innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join('');
+  }
+
+  async function loadModelInfo(silent = false) {
+    const cfg = SERVICES[state.service];
+    try {
+      const res = await fetch(`/api-test/deapi/models?model=${encodeURIComponent(cfg.model)}&keyIndex=${state.keyIndex}`);
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.message || `HTTP ${res.status}`);
+      state.modelInfo[state.service] = json;
+      renderLimitsNote();
+      if (!silent) toast(`Loaded live limits for ${cfg.model}`);
+    } catch (err) {
+      state.modelInfo[state.service] = null;
+      renderLimitsNote();
+      if (!silent) toast(`Could not load model limits: ${err.message}`, true);
+    }
+  }
+
+  function applyLiveDefaults() {
+    const cfg = SERVICES[state.service];
+    const info = state.modelInfo[state.service];
+    if (!info?.model?.info) {
+      toast('Load the live model info first (switch tabs or press the button again).', true);
+      return;
+    }
+    const { defaults = {} } = info.model.info;
+    const values = state.forms[state.service];
+    if (defaults.width) values.width = defaults.width;
+    if (defaults.height) values.height = defaults.height;
+    if (defaults.steps) values.steps = defaults.steps;
+    if (defaults.frames) values.seconds = Math.max(3, Math.min(10, Math.round(defaults.frames / 24)));
+    values.sizePreset = `${defaults.width} × ${defaults.height}`;
+    renderFields();
+    toast('Applied the live model defaults.');
+  }
+
+  // ---------------------------------------------------------------------
+  // Run + poll
+  // ---------------------------------------------------------------------
+  function buildParams() {
+    const cfg = SERVICES[state.service];
+    const values = state.forms[state.service];
+    const params = {};
+    cfg.fields.forEach((field) => {
+      if (field.type === 'size') {
+        params[field.widthName] = values[field.widthName];
+        params[field.heightName] = values[field.heightName];
+        return;
+      }
+      if (field.type === 'image') {
+        const file = state.files[state.service];
+        if (file?.dataUrl) {
+          params.image = file.dataUrl;
+          params.imageName = file.name;
+        }
+        return;
+      }
+      const value = values[field.name];
+      if (field.type === 'checkbox') {
+        params[field.name] = Boolean(value);
+        return;
+      }
+      if (value === '' || value === null || value === undefined) return;
+      params[field.name] = value;
+    });
+    params.keyIndex = state.keyIndex;
+    return params;
+  }
+
+  formEl.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (state.running) return;
+    const cfg = SERVICES[state.service];
+    const params = buildParams();
+
+    if (!params.prompt || !String(params.prompt).trim()) {
+      toast('Add a prompt first.', true);
+      return;
+    }
+    if (!params.image) {
+      toast('Choose an input image first.', true);
+      return;
+    }
+
+    const runBtn = $('runBtn');
+    stopPolling();
+    state.running = true;
+    runBtn.disabled = true;
+    runBtn.textContent = 'Submitting…';
+
+    try {
+      const res = await fetch('/api-test/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ service: state.service, params }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        const message = json.message || json.error?.message || `HTTP ${res.status}`;
+        throw Object.assign(new Error(message), { details: json });
+      }
+      state.activeJob = json.job;
+      state.startedAt = Date.now();
+      runBtn.textContent = 'Running…';
+      renderResult(json.job);
+      startTicker();
+      pollJob(json.job.id);
+      toast(`${cfg.label} ${cfg.tag} submitted.`);
+    } catch (err) {
+      state.running = false;
+      runBtn.disabled = false;
+      runBtn.textContent = 'Run test';
+      renderSubmitError(err);
+      toast(err.message, true);
+    }
+  });
+
+  function renderSubmitError(err) {
+    resultCard.innerHTML = `
+      <div class="result-head">
+        <span class="badge error">request failed</span>
+        <span class="elapsed">—</span>
+      </div>
+      <div class="result-msg error">${esc(err.message)}</div>
+      <div class="error-box">
+        <div class="err-line">${esc(err.message)}</div>
+        <details open><summary>Raw response</summary><pre>${esc(JSON.stringify(err.details ?? { message: err.message }, null, 2).slice(0, 12000))}</pre></details>
+      </div>`;
+  }
+
+  async function pollJob(id) {
+    if (state.activeJob?.id !== id) return;
+    try {
+      const res = await fetch(`/api-test/jobs/${id}`, { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.message || `HTTP ${res.status}`);
+      state.activeJob = json.job;
+      renderResult(json.job);
+      if (json.job.status === 'done' || json.job.status === 'error') {
+        stopPolling();
+        return;
+      }
+      state.pollTimer = setTimeout(() => pollJob(id), 1500);
+    } catch (err) {
+      // Keep polling through transient UI/server hiccups, but show the state.
+      state.pollTimer = setTimeout(() => pollJob(id), 2500);
+      toast(`Status check failed: ${err.message}`, true);
+    }
+  }
+
+  function startTicker() {
+    stopTicker();
+    state.tickTimer = setInterval(() => {
+      const el = document.querySelector('[data-elapsed]');
+      if (!el || !state.activeJob) return;
+      const base = state.activeJob.startedAt || state.activeJob.createdAt || state.startedAt;
+      el.textContent = fmtDuration(Date.now() - base);
+    }, 400);
+  }
+
+  function stopTicker() {
+    if (state.tickTimer) clearInterval(state.tickTimer);
+    state.tickTimer = null;
+  }
+
+  function stopPolling() {
+    if (state.pollTimer) clearTimeout(state.pollTimer);
+    state.pollTimer = null;
+    stopTicker();
+    state.running = false;
+    const runBtn = $('runBtn');
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run test';
+  }
+
+  // ---------------------------------------------------------------------
+  // Result rendering
+  // ---------------------------------------------------------------------
+  function renderResult(job) {
+    if (!job) return;
+    const done = job.status === 'done';
+    const failed = job.status === 'error';
+    const finished = done || failed;
+    const elapsed = finished
+      ? job.elapsedMs || (job.finishedAt || Date.now()) - (job.startedAt || job.createdAt)
+      : Date.now() - (job.startedAt || job.createdAt);
+
+    const badgeClass = done ? 'done' : failed ? 'error' : job.status === 'queued' ? 'queued' : 'running';
+    const badgeText = done ? 'completed' : failed ? 'failed' : job.status === 'queued' ? 'queued' : 'running';
+    const bar = Number.isFinite(job.progress)
+      ? `<div class="bar"><span style="width:${Math.max(2, Math.min(100, job.progress))}%"></span></div>`
+      : '<div class="bar"><span class="indeterminate"></span></div>';
+
+    let html = `
+      <div class="result-head">
+        <span class="badge ${badgeClass}">${badgeClass === 'running' ? '<span class="spinner"></span>' : ''}${badgeText}</span>
+        <span class="elapsed" data-elapsed>${esc(fmtDuration(elapsed))}</span>
+      </div>
+      <div class="result-msg ${failed ? 'error' : ''}">${esc(job.message || 'Working…')}</div>
+      ${bar}`;
+
+    if (job.logs?.length) {
+      html += `<div class="logs">${esc(job.logs.slice(-8).join('\n'))}</div>`;
+    }
+
+    if (failed && job.error) {
+      const raw = JSON.stringify(job.error.details ?? job.error, null, 2);
+      html += `
+        <div class="error-box">
+          <div class="err-line">${esc(job.error.message)}</div>
+          ${job.error.status ? `<div class="hint" style="margin-top:6px">HTTP status: ${esc(job.error.status)}${job.error.code ? ` · code: ${esc(job.error.code)}` : ''}</div>` : ''}
+          <details open><summary>Exact API response</summary><pre>${esc(raw.slice(0, 16000))}</pre></details>
+        </div>`;
+    }
+
+    if (done && job.mediaUrl) {
+      const type = job.result?.type === 'video' ? 'video' : 'image';
+      if (type === 'video') {
+        html += `<div class="media"><video src="${job.mediaUrl}" controls autoplay muted loop playsinline></video></div>`;
+      } else {
+        html += `<div class="media"><img src="${job.mediaUrl}" alt="Generated result"></div>`;
+      }
+      html += `<div class="media-size">requested <strong>${esc(job.requestedSize || 'model default')}</strong> · actual <strong id="actualSize">checking…</strong>${type === 'video' && job.requestedDuration ? ` · duration <strong>${esc(job.requestedDuration)}</strong> · video <strong id="actualDuration">checking…</strong>` : ''}</div>`;
+
+      const meta = [];
+      if (job.model) meta.push(['model', job.model]);
+      if (job.keyLabel) meta.push(['api key', job.keyLabel]);
+      if (job.seed != null) meta.push(['seed', job.seed]);
+      if (job.requestedSize) meta.push(['requested size', job.requestedSize]);
+      if (job.requestedDuration) meta.push(['requested duration', job.requestedDuration]);
+      if (job.requestId) meta.push(['request id', job.requestId]);
+      if (job.projectId) meta.push(['project id', job.projectId]);
+      if (job.result?.url) meta.push(['provider url', job.result.url]);
+      meta.push(['service', job.service]);
+      meta.push(['job id', job.id]);
+
+      html += `<dl class="meta">${meta.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>`;
+      html += `<div class="actions">
+        <a class="btn solid" href="${job.mediaUrl}?download=1" download>Download ${type}</a>
+        <a class="btn ghost" href="${esc(job.result?.url || job.mediaUrl)}" target="_blank" rel="noopener">Open provider URL</a>
+        <button class="btn ghost" type="button" id="copyJson">Copy JSON</button>
+      </div>`;
+    }
+
+    resultCard.innerHTML = html;
+
+    const mediaEl = resultCard.querySelector('.media img, .media video');
+    if (mediaEl) {
+      const reportSize = () => {
+        const width = mediaEl.naturalWidth || mediaEl.videoWidth;
+        const height = mediaEl.naturalHeight || mediaEl.videoHeight;
+        const target = $('actualSize');
+        if (target && width && height) target.textContent = `${width} × ${height}`;
+        if (mediaEl.tagName === 'VIDEO' && Number.isFinite(mediaEl.duration)) {
+          const durationTarget = $('actualDuration');
+          if (durationTarget) {
+            durationTarget.textContent = `${mediaEl.duration.toFixed(2)}s · ~${Math.round(mediaEl.duration * 24)} frames @ 24 fps`;
+          }
+        }
+      };
+      if (mediaEl.tagName === 'VIDEO') {
+        mediaEl.addEventListener('loadedmetadata', reportSize);
+        if (mediaEl.readyState >= 1) reportSize();
+      } else {
+        mediaEl.addEventListener('load', reportSize);
+        if (mediaEl.complete) reportSize();
+      }
+    }
+
+    const copyBtn = $('copyJson');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(job, null, 2));
+          toast('Job JSON copied.');
+        } catch {
+          toast('Could not copy to clipboard.', true);
+        }
+      });
+    }
+    if (!finished) startTicker();
+  }
+
+  // ---------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------
+  $('defaultsBtn').addEventListener('click', () => {
+    if (state.modelInfo[state.service]) applyLiveDefaults();
+    else loadModelInfo(false).then(() => { if (state.modelInfo[state.service]) applyLiveDefaults(); });
+  });
+
+  $('clearBtn').addEventListener('click', () => {
+    stopPolling();
+    state.activeJob = null;
+    resultCard.innerHTML = `
+      <div class="empty">
+        <div>
+          <div class="big">◇</div>
+          <p>Result cleared. Pick a service, fill in the generation settings and run a test.</p>
+        </div>
+      </div>`;
+  });
+
+  async function loadStatus() {
+    try {
+      const res = await fetch('/api-test/status', { cache: 'no-store' });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || 'Status failed');
+      state.env = json;
+      state.keys = json.deapi.keys;
+      if (!state.keys.some((k) => k.index === state.keyIndex)) state.keyIndex = state.keys[0]?.index ?? 0;
+      renderStatus();
+    } catch (err) {
+      statusbar.innerHTML = `<span class="status-pill"><span class="dot bad"></span> ${esc(err.message)}</span>`;
+    }
+  }
+
+  async function init() {
+    const hashService = location.hash.replace('#', '');
+    if (SERVICES[hashService]) state.service = hashService;
+    renderTabs();
+    await loadStatus();
+    renderService();
+    loadModelInfo(true);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -47,7 +47,7 @@ class AIRouterService {
         const model = ai.getGenerativeModel({
             model: modelName,
             systemInstruction: systemPrompt,
-        });
+        }, { timeout: 30000 });
         // The Gemini API requires the first history turn to be a 'user' message.
         // Drop any leading 'model' turns so the history always starts with a user.
         const history = historyMessages.slice();
