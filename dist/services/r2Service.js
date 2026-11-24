@@ -38,15 +38,26 @@ class R2Service {
      * `images/yours/characters/` prefix. Returns the public URL too so the
      * admin form can save it to Supabase right after the upload completes.
      */
-    static async generateCharacterImageUploadUrl(r2Key, mimeType, expiresInSeconds = 900) {
+    static async generateCharacterImageUploadUrl(r2Key, mimeType, expiresInSeconds = 900, contentLength) {
         const bucket = GENERATED_IMAGES_BUCKET;
         const command = new client_s3_1.PutObjectCommand({
             Bucket: bucket,
             Key: r2Key,
             ContentType: mimeType,
+            // Only set when the caller wants the size pinned to the signature.
+            ...(Number.isInteger(contentLength) && contentLength > 0
+                ? { ContentLength: contentLength }
+                : {}),
         });
+        // Signing content-length binds the URL to that exact byte count: R2
+        // rejects any PUT whose body differs, so an oversized video cannot be
+        // squeezed through by lying about its size when requesting the URL.
+        const signOptions = { expiresIn: expiresInSeconds };
+        if (Number.isInteger(contentLength) && contentLength > 0) {
+            signOptions.signableHeaders = new Set(['content-type', 'content-length']);
+        }
         try {
-            const uploadUrl = await (0, s3_request_presigner_1.getSignedUrl)(config_1.r2Client, command, { expiresIn: expiresInSeconds });
+            const uploadUrl = await (0, s3_request_presigner_1.getSignedUrl)(config_1.r2Client, command, signOptions);
             return { uploadUrl, bucket, r2Key, publicUrl: `${config_1.CONFIG.R2.PUBLIC_DOMAIN}/${r2Key}` };
         }
         catch (err) {

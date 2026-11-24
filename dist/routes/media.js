@@ -29,24 +29,72 @@ router.post('/upload-url', auth_1.requireAuth, async (req, res) => {
         return res.status(500).json({ success: false, error: err.message });
     }
 });
+// Character feed media: still images plus MP4 video. Anything else (webm,
+// quicktime, gif-as-video, ...) is rejected before a URL is ever signed.
+const CHARACTER_MEDIA_MIME = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'video/mp4',
+]);
+const MAX_CHARACTER_VIDEO_BYTES = 5 * 1024 * 1024; // 5 MB per video upload
 /**
  * POST /api/v1/media/character-image-upload-url
- * Get a Cloudflare R2 presigned PUT upload URL for a character image.
- * The file is written to the `image-video-file-hosting` bucket under the
- * `images/yours/characters/` prefix, and the response also includes the
- * public URL to store in Supabase after the upload completes.
+ * Get a Cloudflare R2 presigned PUT upload URL for character feed media
+ * (image or MP4 video). The file is written to the `image-video-file-hosting`
+ * bucket under the `images/yours/characters/` prefix, and the response also
+ * includes the public URL to store in Supabase after the upload completes.
+ *
+ * Body: { filename, mimeType, size? }
+ * `size` (bytes) is required for video/mp4 and is baked into the signature so
+ * R2 rejects a body of any other length — that is what enforces the 5 MB cap.
  */
 router.post('/character-image-upload-url', async (req, res) => {
     try {
-        const { filename, mimeType } = req.body;
+        const { filename, mimeType, size } = req.body;
         if (!filename || !mimeType) {
             return res.status(400).json({ success: false, error: 'filename and mimeType required' });
         }
+        const mime = String(mimeType).toLowerCase();
+        if (!CHARACTER_MEDIA_MIME.has(mime)) {
+            return res.status(400).json({
+                success: false,
+                error: 'unsupported media type: only images and video/mp4 are allowed',
+            });
+        }
+        const isVideo = mime === 'video/mp4';
         // Sanitize the key so it can only ever target the characters folder.
-        const safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '-');
+        let safeName = String(filename).replace(/[^a-zA-Z0-9._-]/g, '-');
+        let contentLength;
+        if (isVideo) {
+            if (!safeName.toLowerCase().endsWith('.mp4')) {
+                safeName = `${safeName.replace(/\.(mov|webm|m4v|avi|mkv)$/i, '')}.mp4`;
+            }
+            const bytes = Number(size);
+            if (!Number.isInteger(bytes) || bytes <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'size (bytes) is required for video uploads',
+                });
+            }
+            if (bytes > MAX_CHARACTER_VIDEO_BYTES) {
+                return res.status(413).json({
+                    success: false,
+                    error: 'video exceeds the 5 MB limit',
+                    maxBytes: MAX_CHARACTER_VIDEO_BYTES,
+                });
+            }
+            contentLength = bytes;
+        }
         const r2Key = `images/yours/characters/${safeName}`;
-        const presignedData = await r2Service_1.R2Service.generateCharacterImageUploadUrl(r2Key, mimeType);
-        return res.json({ success: true, ...presignedData });
+        const presignedData = await r2Service_1.R2Service.generateCharacterImageUploadUrl(r2Key, mime, 900, contentLength);
+        return res.json({
+            success: true,
+            ...presignedData,
+            mediaType: isVideo ? 'video' : 'image',
+            maxBytes: MAX_CHARACTER_VIDEO_BYTES,
+        });
     }
     catch (err) {
         return res.status(500).json({ success: false, error: err.message });
