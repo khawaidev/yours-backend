@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
+const fs_1 = require("fs");
+const path_1 = require("path");
 const config_1 = require("../config");
 const deapiImageService_1 = require("../services/deapiImageService");
 const r2Service_1 = require("../services/r2Service");
@@ -62,6 +64,145 @@ router.get('/', async (req, res) => {
         return res.status(500).json({ success: false, error: err.message });
     }
 });
+// ---------------------------------------------------------------------------
+// Local character index (used by admin.html)
+// ---------------------------------------------------------------------------
+// A small JSON file that mirrors the admin page's character list with only
+// the fields the admin UI needs: full name, age, art style, gender,
+// personality and verified status. The admin page reads its list from here
+// instead of querying Supabase, and writes to it after every add/update.
+const CHARACTER_INDEX_DIR = (0, path_1.resolve)(__dirname, '../../data');
+const CHARACTER_INDEX_FILE = (0, path_1.join)(CHARACTER_INDEX_DIR, 'characters-index.json');
+
+function readCharacterIndex() {
+    try {
+        const raw = (0, fs_1.readFileSync)(CHARACTER_INDEX_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    }
+    catch (err) {
+        return null; // missing or unreadable -> caller can seed
+    }
+}
+
+function writeCharacterIndex(entries) {
+    (0, fs_1.mkdirSync)(CHARACTER_INDEX_DIR, { recursive: true });
+    // Atomic-ish write: write a sibling temp file, then rename over the index.
+    const tmp = CHARACTER_INDEX_FILE + '.tmp';
+    (0, fs_1.writeFileSync)(tmp, JSON.stringify(entries, null, 2));
+    (0, fs_1.renameSync)(tmp, CHARACTER_INDEX_FILE);
+}
+
+function toIndexEntry(row) {
+    return {
+        id: row.id,
+        full_name: row.name || row.full_name || '',
+        age: row.age == null ? null : Number(row.age),
+        art_style: row.art_style || '',
+        gender: row.gender || '',
+        personality: row.personality || '',
+        verified: row.verified === true,
+        updated_at: row.updated_at || new Date().toISOString()
+    };
+}
+
+async function seedCharacterIndexFromSupabase() {
+    const { data, error } = await config_1.supabaseAdmin
+        .from('characters')
+        .select('id,name,age,art_style,gender,personality,verified,created_at')
+        .order('created_at', { ascending: false })
+        .limit(200);
+    if (error)
+        throw new Error(error.message);
+    const entries = (data || []).map(function (row) {
+        const entry = toIndexEntry(row);
+        entry.updated_at = row.created_at || entry.updated_at;
+        return entry;
+    });
+    writeCharacterIndex(entries);
+    return entries;
+}
+
+/**
+ * GET /api/v1/characters/local-index
+ * Read the local JSON character index. The first call ever seeds it from
+ * Supabase so existing characters show up without manual migration.
+ */
+router.get('/local-index', async (req, res) => {
+    try {
+        let entries = readCharacterIndex();
+        if (entries === null) {
+            try {
+                entries = await seedCharacterIndexFromSupabase();
+            }
+            catch (seedErr) {
+                console.warn('[characters] local index seed failed:', seedErr.message);
+                entries = [];
+            }
+        }
+        entries.sort(function (a, b) {
+            return String(b.updated_at || '').localeCompare(String(a.updated_at || ''));
+        });
+        return res.json({ success: true, characters: entries });
+    }
+    catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/v1/characters/local-index
+ * Insert or update one character in the local JSON index (keyed by id).
+ */
+router.post('/local-index', async (req, res) => {
+    try {
+        const body = req.body || {};
+        const id = String(body.id || '').trim();
+        const fullName = String(body.full_name || '').trim();
+        if (!id)
+            return res.status(400).json({ success: false, error: 'id is required' });
+        if (!fullName)
+            return res.status(400).json({ success: false, error: 'full_name is required' });
+        let entries = readCharacterIndex() || [];
+        const entry = {
+            id: id,
+            full_name: fullName,
+            age: body.age == null || body.age === '' ? null : Number(body.age),
+            art_style: String(body.art_style || ''),
+            gender: String(body.gender || ''),
+            personality: String(body.personality || ''),
+            verified: body.verified === true,
+            updated_at: new Date().toISOString()
+        };
+        const existingIndex = entries.findIndex(function (e) { return e && e.id === id; });
+        if (existingIndex === -1)
+            entries.unshift(entry);
+        else
+            entries[existingIndex] = entry;
+        writeCharacterIndex(entries);
+        return res.json({ success: true, character: entry, characters: entries });
+    }
+    catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * DELETE /api/v1/characters/local-index/:id
+ * Remove one character from the local JSON index.
+ */
+router.delete('/local-index/:id', async (req, res) => {
+    try {
+        const id = String(req.params.id || '');
+        const entries = (readCharacterIndex() || []).filter(function (e) { return e && e.id !== id; });
+        writeCharacterIndex(entries);
+        return res.json({ success: true, characters: entries });
+    }
+    catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 /**
  * GET /api/v1/characters/saved?userId=...
  * List the characters a user has liked/saved, newest first, with their

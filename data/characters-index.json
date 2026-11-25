@@ -1,0 +1,72 @@
+[
+  {
+    "id": "a4aac704-81b4-4d62-97f4-d81830ccfb31",
+    "full_name": "Donggeuran",
+    "age": 34,
+    "art_style": "realistic",
+    "gender": "women",
+    "personality": "the_dominant",
+    "verified": true,
+    "updated_at": "2026-11-24T09:45:32.715658+00:00"
+  },
+  {
+    "id": "f3cdc505-fc10-4fe1-bd46-1f943d1b75d5",
+    "full_name": "Tsunade Senju",
+    "age": 58,
+    "art_style": "anime",
+    "gender": "women",
+    "personality": "the_dominant",
+    "verified": true,
+    "updated_at": "2026-11-24T09:23:25.478655+00:00"
+  },
+  {
+    "id": "7004242a-2141-425f-a475-99adce523d74",
+    "full_name": "Sakura Haruno",
+    "age": 33,
+    "art_style": "anime",
+    "gender": "women",
+    "personality": "the_dominant",
+    "verified": true,
+    "updated_at": "2026-11-24T08:44:16.68757+00:00"
+  },
+  {
+    "id": "bdd875f9-824c-403d-bb7f-a9017d35a0ff",
+    "full_name": "Sera",
+    "age": 35,
+    "art_style": "realistic",
+    "gender": "women",
+    "personality": "the_dominant",
+    "verified": false,
+    "updated_at": "2026-11-24T08:25:45.96348+00:00"
+  },
+  {
+    "id": "8dddabc5-f255-4039-a1b3-85a44d36e3a4",
+    "full_name": "Mia Kitano",
+    "age": 29,
+    "art_style": "realistic",
+    "gender": "women",
+    "personality": "the_submissive",
+    "verified": false,
+    "updated_at": "2026-08-13T15:02:04.403208+00:00"
+  },
+  {
+    "id": "bb2553b1-e89c-43a9-9fba-48ca0cc07a29",
+    "full_name": "Nancy Azu",
+    "age": 25,
+    "art_style": "realistic",
+    "gender": "women",
+    "personality": "the_tease",
+    "verified": false,
+    "updated_at": "2026-08-13T14:18:18.907512+00:00"
+  },
+  {
+    "id": "0165953b-7e35-4110-bcc6-c0839170ed39",
+    "full_name": "Yuki Arai",
+    "age": 22,
+    "art_style": "realistic",
+    "gender": "women",
+    "personality": "the_submissive",
+    "verified": false,
+    "updated_at": "2026-08-13T11:00:38.872944+00:00"
+  }
+]
