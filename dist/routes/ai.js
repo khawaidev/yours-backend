@@ -330,7 +330,7 @@ router.post('/generate-voice', auth_1.requireAuth, rateLimitService_1.messagingR
         const script = await aiRouterService_1.AIRouterService.generateVoiceScript(character, historyMessages, String(prompt).trim());
         const speech = await speechService_1.SpeechService.generateSpeech({
             text: script,
-            voice: character.voice_id && /^[a-f0-9]{32}$/i.test(character.voice_id) ? character.voice_id : DEFAULT_VOICE_ID,
+            voice: character.voice_id || null,
             speed: 1.0,
         });
 
@@ -339,7 +339,8 @@ router.post('/generate-voice', auth_1.requireAuth, rateLimitService_1.messagingR
             audioBase64: speech.audioBase64,
             mimeType: speech.mimeType || 'audio/mpeg',
             transcript: script,
-            voiceId: DEFAULT_VOICE_ID,
+            voiceId: speech.voiceId || DEFAULT_VOICE_ID,
+            provider: speech.provider || null,
         });
     }
     catch (err) {

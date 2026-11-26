@@ -1,90 +1,109 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AIRouterService = void 0;
-const generative_ai_1 = require("@google/generative-ai");
 const config_1 = require("../config");
 class AIRouterService {
-    // Ordered model fallback chain (highest priority first). Same API key is used
-    // across the chain; only when every model on the current key is rate limited
-    // do we advance to the next API key in the pool.
-    static MODEL_CHAIN = ['gemma-4-31b-it', 'gemma-4-26b-a4b-it'];
-    static keyIndex = 0;
-    static cooldownUntil = [];
+    // Groq chat fallback chain (highest priority first). The same API key is
+    // used across the chain; only when every model on the current key fails do
+    // we advance to the next Groq API key in the pool.
+    static GROQ_CHAT_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+    static GROQ_MODEL_CHAIN = ['openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+    static GROQ_MAX_COMPLETION_TOKENS = 2048;
+    static groqKeyIndex = 0;
+    static groqCooldownUntil = [];
     /**
-     * Whether the given rate-limit error should trigger model/key rotation
+     * Get the next Groq API key from the round-robin pool, skipping any key
+     * still in cooldown.
      */
-    static isRateLimitError(err) {
-        const msg = String((err && (err.message || err.status)) || '').toLowerCase();
-        return (msg.includes('rate limit') ||
-            msg.includes('429') ||
-            msg.includes('resource_exhausted') ||
-            msg.includes('quota') ||
-            msg.includes('too many requests'));
-    }
-    /**
-     * Get the next API key from the round-robin pool, skipping any key still in cooldown
-     */
-    static getNextAIKeyIndex() {
-        const keys = (0, config_1.getGeminiKeyPool)();
+    static getNextGroqKeyIndex() {
+        const keys = (0, config_1.getGroqKeyPool)();
         if (keys.length === 0) {
-            throw new Error('No GEMINI_API_KEY environment variables available in key pool');
+            throw new Error('No GROQ_API_KEY environment variables available in key pool');
         }
         const now = Date.now();
         for (let i = 0; i < keys.length; i++) {
-            this.keyIndex = (this.keyIndex + 1) % keys.length;
-            const idx = this.keyIndex;
-            if (!this.cooldownUntil[idx] || this.cooldownUntil[idx] <= now) {
+            this.groqKeyIndex = (this.groqKeyIndex + 1) % keys.length;
+            const idx = this.groqKeyIndex;
+            if (!this.groqCooldownUntil[idx] || this.groqCooldownUntil[idx] <= now) {
                 return idx;
             }
         }
-        // All keys are cooling down — clear cooldowns and fall back to round-robin
-        this.cooldownUntil = [];
-        this.keyIndex = (this.keyIndex + 1) % keys.length;
-        return this.keyIndex;
+        // All keys are cooling down — clear cooldowns and fall back to round-robin.
+        this.groqCooldownUntil = [];
+        this.groqKeyIndex = (this.groqKeyIndex + 1) % keys.length;
+        return this.groqKeyIndex;
     }
-    static async attemptModel(keyPool, keyIndex, modelName, systemPrompt, historyMessages, userMessageText, imageDataUrl) {
-        const ai = new generative_ai_1.GoogleGenerativeAI(keyPool[keyIndex]);
-        const model = ai.getGenerativeModel({
-            model: modelName,
-            systemInstruction: systemPrompt,
-        }, { timeout: 30000 });
-        // The Gemini API requires the first history turn to be a 'user' message.
-        // Drop any leading 'model' turns so the history always starts with a user.
-        const history = historyMessages.slice();
-        while (history.length > 0 && history[0].role !== 'user') {
-            history.shift();
+    /**
+     * Build the OpenAI-style message list used by Groq. GPT-OSS models on Groq
+     * are text-only, so any attached image is intentionally omitted and the
+     * text (if any) is still sent.
+     */
+    static buildGroqMessages(systemPrompt, historyMessages, userMessageText, imageDataUrl) {
+        const messages = [];
+        if (systemPrompt && String(systemPrompt).trim()) {
+            messages.push({ role: 'system', content: String(systemPrompt).trim() });
         }
-        const chatHistory = history.map((msg) => ({
-            role: msg.role === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.content }],
-        }));
-        const chat = model.startChat({ history: chatHistory });
-        // Attach the user's image (if any) as inline data so the model can see it,
-        // alongside any text they typed. Image may be sent with or without text.
-        const contentParts = [];
-        if (imageDataUrl) {
-            const parsed = this.parseDataUrl(imageDataUrl);
-            if (parsed) {
-                contentParts.push({ inlineData: { mimeType: parsed.mimeType, data: parsed.data } });
-            }
+        for (const msg of historyMessages || []) {
+            if (!msg)
+                continue;
+            const content = String(msg.content || '').trim();
+            if (!content)
+                continue;
+            messages.push({
+                role: msg.role === 'user' ? 'user' : 'assistant',
+                content,
+            });
         }
-        if (userMessageText)
-            contentParts.push({ text: userMessageText });
-        if (contentParts.length === 0)
-            contentParts.push({ text: "[Image]" });
-        const result = await chat.sendMessage(contentParts);
-        // Some models return their internal reasoning as extra parts marked
-        // `thought: true`. Only the final `thought`-less part is the real in-character
-        // reply. Join all non-thought text so we never leak process-of-thought.
-        const candidate = result.response.candidates?.[0];
-        const parts = (candidate && candidate.content && candidate.content.parts) || [];
-        const replyText = parts
-            .filter((p) => !p.thought)
-            .map((p) => p.text || '')
-            .join('')
-            .trim();
+        let userText = String(userMessageText || '').trim();
+        if (!userText && imageDataUrl) {
+            userText = '[The user attached an image, but this model cannot view images.]';
+        }
+        if (userText)
+            messages.push({ role: 'user', content: userText });
+        return messages;
+    }
+    /**
+     * One Groq chat-completions attempt for a specific key + model.
+     *
+     * GPT-OSS reasoning settings from the Groq docs: reasoning_effort accepts
+     * low/medium/high, and include_reasoning controls whether the reasoning
+     * trace is returned. The app never displays the trace, so it stays hidden.
+     */
+    static async attemptGroqModel(apiKey, modelName, systemPrompt, historyMessages, userMessageText, imageDataUrl) {
+        const messages = this.buildGroqMessages(systemPrompt, historyMessages, userMessageText, imageDataUrl);
+        if (messages.length === 0) {
+            throw new Error('No messages to send to Groq');
+        }
+        const response = await fetch(this.GROQ_CHAT_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages,
+                temperature: 0.8,
+                max_completion_tokens: this.GROQ_MAX_COMPLETION_TOKENS,
+                reasoning_effort: 'low',
+                include_reasoning: false,
+            }),
+            signal: AbortSignal.timeout(45000),
+        });
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => '');
+            throw new Error(`Groq ${modelName} ${response.status}: ${errorText || response.statusText}`);
+        }
+        const json = await response.json();
+        const message = json && json.choices && json.choices[0] && json.choices[0].message;
+        let content = message ? message.content : '';
+        if (Array.isArray(content)) {
+            content = content.map((part) => (part && part.text) || '').join('');
+        }
+        const replyText = String(content || '').trim();
         return replyText || "I'm right here with you.";
     }
+
     /**
      * Assemble system instruction prompt incorporating the character's identity
      * (name, gender, age, about, personality, chat style) plus relationship state
@@ -155,33 +174,30 @@ OUTPUT FORMAT (MANDATORY):
         return { mimeType: match[1].trim(), data: match[2] };
     }
     /**
-     * Generate a chat completion using the model fallback chain (gemma-4-31b-it
-     * primary → gemma-4-26b-a4b-it fallback) on a single API key. If every model
-     * on that key is rate limited, advance to the next API key in the pool and
-     * repeat the same chain.
+     * Generate a chat completion using the Groq fallback chain
+     * (openai/gpt-oss-20b primary → openai/gpt-oss-120b fallback) on a single
+     * API key. If every model on that key fails, advance to the next Groq API
+     * key in the pool and repeat the same chain.
      */
     static async generateChatResponse(systemPrompt, historyMessages, userMessageText, imageDataUrl) {
-        const keys = (0, config_1.getGeminiKeyPool)();
+        const keys = (0, config_1.getGroqKeyPool)();
         if (keys.length === 0) {
             return { responseText: "I'm right here with you." };
         }
         const maxKeys = Math.min(keys.length, 8);
         for (let k = 0; k < maxKeys; k++) {
-            const keyIndex = this.getNextAIKeyIndex();
-            for (const modelName of this.MODEL_CHAIN) {
+            const keyIndex = this.getNextGroqKeyIndex();
+            for (const modelName of this.GROQ_MODEL_CHAIN) {
                 try {
-                    const text = await this.attemptModel(keys, keyIndex, modelName, systemPrompt, historyMessages, userMessageText, imageDataUrl);
+                    const text = await this.attemptGroqModel(keys[keyIndex], modelName, systemPrompt, historyMessages, userMessageText, imageDataUrl);
                     return { responseText: text, moodDelta: 'happy', affectionDelta: 0.5 };
                 }
                 catch (err) {
-                    if (this.isRateLimitError(err)) {
-                        continue; // try fallback model on the same key
-                    }
-                    // Non-rate-limit error — treat as a hard failure on this key/model combo
+                    console.warn(`[AIRouterService] Groq ${modelName} failed:`, err && err.message ? err.message : err);
                 }
             }
-            // All models on this key failed → put key in cooldown and rotate to the next key
-            this.cooldownUntil[keyIndex] = Date.now() + 30 * 1000;
+            // Both models failed on this key → cool it down and rotate to the next key.
+            this.groqCooldownUntil[keyIndex] = Date.now() + 30 * 1000;
         }
         return {
             responseText: `I'm feeling a bit distant right now, but I'm here for you! Tell me more.`,
@@ -190,33 +206,31 @@ OUTPUT FORMAT (MANDATORY):
     /**
      * Generate the spoken voice-script for a voice-note reply.
      *
-     * The script is emotion-tagged for Fish Audio (e.g. "[soft voice]", "[pause]",
-     * "[playful]", "[laughing]") and is steered by the character's personality,
-     * chat style and the current relationship mood. Only the raw script is
-     * returned — it is passed verbatim to the TTS engine and also stored as the
-     * voice message's transcript.
+     * The script is emotion-tagged (e.g. "[soft voice]", "[pause]", "[playful]")
+     * and is steered by the character's personality, chat style and the current
+     * relationship mood. Gemini TTS gets the tags stripped, while the Fish Audio
+     * fallback uses them verbatim. The original tagged script is also stored as
+     * the voice message's transcript.
      */
     static async generateVoiceScript(character, historyMessages, userMessageText) {
-        const keys = (0, config_1.getGeminiKeyPool)();
+        const keys = (0, config_1.getGroqKeyPool)();
         if (keys.length === 0) {
             return '[soft voice] Hey… I just wanted to say hi. [playful] Miss me?';
         }
         const systemPrompt = this.buildVoiceScriptPrompt(character);
         const maxKeys = Math.min(keys.length, 8);
         for (let k = 0; k < maxKeys; k++) {
-            const keyIndex = this.getNextAIKeyIndex();
-            for (const modelName of this.MODEL_CHAIN) {
+            const keyIndex = this.getNextGroqKeyIndex();
+            for (const modelName of this.GROQ_MODEL_CHAIN) {
                 try {
-                    const text = await this.attemptModel(keys, keyIndex, modelName, systemPrompt, historyMessages, userMessageText, null);
+                    const text = await this.attemptGroqModel(keys[keyIndex], modelName, systemPrompt, historyMessages, userMessageText, null);
                     return text;
                 }
                 catch (err) {
-                    if (this.isRateLimitError(err)) {
-                        continue;
-                    }
+                    console.warn(`[AIRouterService] Groq voice script ${modelName} failed:`, err && err.message ? err.message : err);
                 }
             }
-            this.cooldownUntil[keyIndex] = Date.now() + 30 * 1000;
+            this.groqCooldownUntil[keyIndex] = Date.now() + 30 * 1000;
         }
         return '[soft voice] Hey… I’m glad you messaged me. [playful] Talk to me?';
     }

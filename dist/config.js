@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.memoryConfig = exports.getDeAPiKeyPool = exports.getGeminiKeyPool = exports.r2Client = exports.supabaseAdmin = exports.CONFIG = void 0;
+exports.memoryConfig = exports.getGroqKeyPool = exports.getDeAPiKeyPool = exports.getGeminiKeyPool = exports.r2Client = exports.supabaseAdmin = exports.CONFIG = void 0;
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const supabase_js_1 = require("@supabase/supabase-js");
@@ -96,6 +96,21 @@ const getDeAPiKeyPool = () => {
     return keys;
 };
 exports.getDeAPiKeyPool = getDeAPiKeyPool;
+// Collect Groq API key pool (GROQ_API_KEY + numbered variants). The numbered
+// loop also picks up the legacy GROQ_APO_KEY3 spelling that exists in some
+// .env files, so a single typo never silently drops a key.
+const getGroqKeyPool = () => {
+    const keys = [];
+    if (process.env.GROQ_API_KEY)
+        keys.push(process.env.GROQ_API_KEY);
+    for (let i = 1; i <= 50; i++) {
+        const key = process.env[`GROQ_API_KEY${i}`] || process.env[`GROQ_APO_KEY${i}`];
+        if (key)
+            keys.push(key);
+    }
+    return keys;
+};
+exports.getGroqKeyPool = getGroqKeyPool;
 // Semantic memory pipeline configuration.
 // Vector dimension MUST exactly match the Qdrant collection's vector size.
 exports.memoryConfig = {
