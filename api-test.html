@@ -302,6 +302,73 @@
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
   .toast.error { border-color: rgba(255, 92, 118, 0.45); }
+  .chat-shell { display: flex; flex-direction: column; height: 560px; max-height: 75vh; }
+  .chat-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .chat-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 14px 2px; display: flex; flex-direction: column; gap: 11px; }
+  .chat-empty { margin: auto; text-align: center; color: var(--faint); font-size: 12.5px; max-width: 34ch; }
+  .chat-bubble {
+    max-width: 88%; padding: 10px 13px; border-radius: 14px;
+    font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+    border: 1px solid var(--line);
+  }
+  .chat-bubble.user {
+    align-self: flex-end;
+    background: linear-gradient(140deg, rgba(244, 36, 94, 0.24), rgba(255, 122, 69, 0.14));
+    border-color: rgba(244, 36, 94, 0.4);
+  }
+  .chat-bubble.assistant {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.035);
+  }
+  .reasoning-trace {
+    margin-bottom: 8px;
+    font-size: 12px;
+    opacity: .85;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+  .reasoning-trace summary {
+    cursor: pointer;
+    user-select: none;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    opacity: .7;
+  }
+  .reasoning-trace[open] summary { opacity: 1; }
+  .chat-bubble.error {
+    align-self: flex-start;
+    background: rgba(255, 92, 118, 0.09);
+    border-color: rgba(255, 92, 118, 0.35);
+    color: #ffb3c1;
+  }
+  .chat-meta {
+    margin-top: 6px; padding-top: 5px; border-top: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    font: 600 10.5px/1.3 var(--mono); color: var(--muted);
+  }
+  .ms-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 999px;
+    background: rgba(61, 220, 151, 0.12); border: 1px solid rgba(61, 220, 151, 0.32);
+    color: var(--green); font: 700 11px/1.3 var(--mono);
+  }
+  .ms-pill.err {
+    background: rgba(255, 92, 118, 0.12); border-color: rgba(255, 92, 118, 0.35);
+    color: var(--red);
+  }
+  .chat-compose { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); align-items: flex-end; flex-wrap: wrap; }
+  .chat-compose textarea { min-height: 44px; max-height: 130px; flex: 1; min-width: 180px; padding: 10px 12px; }
+  .chat-attach-row { width: 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .chat-thumb { width: 42px; height: 42px; border-radius: 8px; object-fit: cover; border: 1px solid var(--line-strong); }
+  .chat-bubble-img { display: block; max-width: 220px; max-height: 180px; border-radius: 9px; margin-bottom: 6px; object-fit: cover; }
+  .audio-box {
+    margin-top: 14px; padding: 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: #0b080d;
+  }
+  .audio-box audio { width: 100%; display: block; }
   @media (max-width: 980px) {
     .layout { grid-template-columns: 1fr; }
     .result-card { position: static; }
@@ -322,7 +389,7 @@
     <div class="mark">Y</div>
     <div>
       <h1>API Test Lab</h1>
-      <p>deAPI · Qwen Edit &nbsp;•&nbsp; FLUX.2 Klein &nbsp;•&nbsp; MiniMax H3 &nbsp;•&nbsp; LTX-2.5</p>
+      <p>deAPI · Gemini · OpenRouter · Groq</p>
     </div>
   </div>
   <div class="statusbar" id="statusbar">
@@ -516,6 +583,243 @@
           hint: 'Blank = a random seed is generated and logged by the harness.' },
       ],
     },
+
+    'gemini-chat': {
+      kind: 'chat',
+      keyPool: 'gemini',
+      label: 'Gemini',
+      tag: 'Text chat',
+      title: 'Gemini / Gemma Text Messaging',
+      model: 'gemma-4-31b-it',
+      desc: 'Test Gemini API keys and the app’s live text models in a multi-turn messaging interface with exact ms response timing.',
+      meta: ['POST /v1beta/models/{model}:generateContent', 'app chain: gemma-4-31b-it → gemma-4-26b-a4b-it', 'Gemma thinking: minimal / high'],
+      defaults: {
+        model: 'gemma-4-31b-it',
+        temperature: 0.9,
+        thinkingLevel: 'minimal',
+        systemPrompt: 'You are a warm, expressive, natural conversational partner. Keep replies concise and engaging.',
+      },
+      fields: [
+        { name: 'model', type: 'select', label: 'Text model', options: [
+            { value: 'gemma-4-31b-it', label: 'gemma-4-31b-it (app primary)' },
+            { value: 'gemma-4-26b-a4b-it', label: 'gemma-4-26b-a4b-it (app fallback)' },
+            { value: 'gemini-3.1-flash-lite', label: 'gemini-3.1-flash-lite' },
+            { value: 'gemini-3.5-flash-lite', label: 'gemini-3.5-flash-lite' },
+          ], hint: 'App chain (Gemma 4) plus Gemini 3.1 Flash Lite & 3.5 Flash Lite.' },
+        { name: 'thinkingLevel', type: 'select', label: 'Thinking level (Gemma 4)', options: [
+            { value: 'minimal', label: 'minimal (default — fastest, lowest reasoning)' },
+            { value: 'high', label: 'high (deeper reasoning)' },
+          ], hint: 'Applied to gemma-4-31b-it and gemma-4-26b-a4b-it only. Ignored by the Gemini Flash Lite models.' },
+        { name: 'temperature', type: 'number', label: 'Temperature', min: 0, max: 2, step: 0.1, quick: [0.3, 0.7, 0.9, 1.2],
+          hint: '0.0 – 2.0 sampling temperature.' },
+        { name: 'systemPrompt', type: 'textarea', label: 'System prompt', full: true, rows: 4, optional: true,
+          placeholder: 'Optional system instruction…' },
+      ],
+    },
+
+    'openrouter-tts': {
+      kind: 'tts',
+      keyPool: 'openrouter',
+      endpoint: '/api-test/tts/openrouter',
+      label: 'OpenRouter',
+      tag: 'Fish TTS',
+      title: 'OpenRouter Fish Audio s2.1 TTS',
+      model: 'fish-audio/s2.1-pro-free:free',
+      desc: 'Tests OPENROUTER_API_KEY and the Fish Audio s2.1 TTS model used in SpeechService, reporting response time in ms.',
+      meta: ['POST /api/v1/audio/speech', 'model: fish-audio/s2.1-pro-free:free', 'format: mp3'],
+      defaults: {
+        text: '[soft voice] Hey… I just wanted to say hi. [playful] Miss me?',
+        voice: '8fdcb77230554e1ab160e2361bff4296',
+        speed: 1.0,
+        temperature: 0.7,
+        top_p: 0.7,
+        repetition_penalty: 1.2,
+      },
+      fields: [
+        { name: 'text', type: 'textarea', label: 'TTS script', required: true, full: true, rows: 4,
+          placeholder: 'Enter text or Fish emotion tags like [soft voice], [playful], [pause]…' },
+        { name: 'voice', type: 'text', label: 'Fish voice ID', required: true,
+          hint: 'App default: 8fdcb77230554e1ab160e2361bff4296' },
+        { name: 'speed', type: 'number', label: 'Speed', min: 0.6, max: 1.5, step: 0.05, quick: [0.85, 1.0, 1.15, 1.3],
+          hint: '0.6 – 1.5 (app default 1.0).' },
+        { name: 'temperature', type: 'number', label: 'Temperature', min: 0, max: 1.5, step: 0.05, quick: [0.5, 0.7, 0.9] },
+        { name: 'top_p', type: 'number', label: 'Top P', min: 0.1, max: 1, step: 0.05, quick: [0.5, 0.7, 0.9] },
+        { name: 'repetition_penalty', type: 'number', label: 'Repetition penalty', min: 0.8, max: 2, step: 0.05, quick: [1.0, 1.2, 1.4] },
+      ],
+    },
+
+    'gemini-tts': {
+      kind: 'tts',
+      keyPool: 'gemini',
+      endpoint: '/api-test/tts/gemini',
+      label: 'Gemini',
+      tag: '3.8 TTS',
+      title: 'Gemini 3.8 Flash TTS',
+      model: 'gemini-3.8-flash-tts',
+      desc: 'Tests Gemini API keys with gemini-3.8-flash-tts and gemini-3.8-flash-lite-tts, returning playable audio and response time in ms.',
+      meta: ['POST /v1beta/models/{model}:generateContent', 'responseModalities: AUDIO', 'output: WAV'],
+      defaults: {
+        model: 'gemini-3.8-flash-tts',
+        voiceName: 'Kore',
+        text: 'Hey there! This is a quick test of Gemini 3.8 Flash text to speech.',
+      },
+      fields: [
+        { name: 'model', type: 'select', label: 'Gemini TTS model', options: [
+            { value: 'gemini-3.8-flash-tts', label: 'gemini-3.8-flash-tts' },
+            { value: 'gemini-3.8-flash-lite-tts', label: 'gemini-3.8-flash-lite-tts' },
+          ] },
+        { name: 'voiceName', type: 'select', label: 'Prebuilt voice', options: [
+            'Kore', 'Zephyr', 'Puck', 'Charon', 'Fenrir', 'Aoede', 'Leda', 'Orus', 'Sulafat'
+          ] },
+        { name: 'text', type: 'textarea', label: 'Text to speak', required: true, full: true, rows: 4,
+          placeholder: 'Enter text to synthesize…' },
+      ],
+    },
+
+    'groq-chat': {
+      kind: 'chat',
+      keyPool: 'groq',
+      endpoint: '/api-test/groq/chat',
+      supportsImage: true,
+      label: 'Groq',
+      tag: 'Qwen / GPT-OSS / Llama',
+      title: 'Groq Chat (Qwen 3.8, GPT-OSS, Llama 3.1)',
+      model: 'qwen/qwen3.8-27b',
+      desc: 'Tests GROQ_API_KEY with qwen/qwen3.8-27b, openai/gpt-oss-20b, openai/gpt-oss-120b and llama-3.1-8b-instant. Send text only, an uploaded image only, or both with exact ms response timing. Only Qwen accepts images.',
+      meta: ['POST /openai/v1/chat/completions', 'qwen3.8-27b · gpt-oss-20b · gpt-oss-120b · llama-3.1-8b-instant', 'reasoning_effort + include_reasoning'],
+      defaults: {
+        model: 'qwen/qwen3.8-27b',
+        temperature: 0.7,
+        maxTokens: 1024,
+        systemPrompt: 'You are a helpful, concise multimodal assistant.',
+        reasoningEffort: 'none',
+        reasoningFormat: 'hidden',
+      },
+      fields: [
+        { name: 'model', type: 'select', label: 'Model', options: [
+            { value: 'qwen/qwen3.8-27b', label: 'qwen/qwen3.8-27b (vision + text)' },
+            { value: 'openai/gpt-oss-20b', label: 'openai/gpt-oss-20b (text)' },
+            { value: 'openai/gpt-oss-120b', label: 'openai/gpt-oss-120b (text)' },
+            { value: 'llama-3.1-8b-instant', label: 'llama-3.1-8b-instant (text)' },
+          ], hint: 'Qwen is the only vision model here; images are omitted for GPT-OSS and Llama.' },
+        { name: 'temperature', type: 'number', label: 'Temperature', min: 0, max: 2, step: 0.1, quick: [0.3, 0.6, 0.7, 1.0] },
+        { name: 'maxTokens', type: 'number', label: 'Max completion tokens', min: 1, max: 131072, step: 64, quick: [256, 1024, 4096],
+          hint: 'Capped per model: Qwen 16,384 · GPT-OSS 65,536 · Llama 131,072.' },
+        { name: 'systemPrompt', type: 'textarea', label: 'System prompt', full: true, rows: 3, optional: true,
+          placeholder: 'Optional system instruction…',
+          hint: 'GPT-OSS docs recommend putting instructions in the user message; the Harmony format still accepts system.' },
+        { name: 'reasoningEffort', type: 'select', label: 'Thinking mode (reasoning_effort)', options: [
+            { value: 'none',   label: 'none — off (Qwen only)' },
+            { value: 'default', label: 'default — model default (Qwen only)' },
+            { value: 'low',    label: 'low' },
+            { value: 'medium', label: 'medium' },
+            { value: 'high',   label: 'high' },
+          ], hint: 'Qwen 3.8: none/default/low/medium/high (default none). GPT-OSS 20B/120B: low/medium/high (default medium). Llama 3.1 8B: not supported.' },
+        { name: 'reasoningFormat', type: 'select', label: 'Reasoning trace', options: [
+            { value: 'hidden', label: 'hidden (suppress thinking trace)' },
+            { value: 'parsed', label: 'parsed (show thinking in reply meta)' },
+            { value: 'raw', label: 'raw (inline  thinking in content, Qwen only)' },
+          ], hint: 'Qwen: reasoning_format hidden/parsed/raw. GPT-OSS: maps to include_reasoning false/true (no reasoning_format). Llama: ignored.' },
+      ],
+    },
+
+    'clod-chat': {
+      kind: 'chat',
+      keyPool: 'clod',
+      endpoint: '/api-test/clod/chat',
+      supportsImage: true,
+      label: 'Clod',
+      tag: 'Qwen 3.5 9B / Gemma 4 31B',
+      title: 'Clod.io Vision Chat',
+      model: 'clod/qwen3p5-9b',
+      desc: 'Tests CLOD_API_KEY with clod/qwen3p5-9b and clod/gemma-4-31b-it via api.clod.io — both support text, image, or combined input with exact ms timing.',
+      meta: ['POST /v1/chat/completions', 'base: api.clod.io', 'vision + text', '256K–262K context'],
+      defaults: {
+        model: 'clod/qwen3p5-9b',
+        temperature: 0.7,
+        maxTokens: 1024,
+        systemPrompt: 'You are a helpful, concise multimodal assistant.',
+        reasoningEffort: 'none',
+      },
+      fields: [
+        { name: 'model', type: 'select', label: 'Model', options: [
+            { value: 'clod/qwen3p5-9b',    label: 'clod/qwen3p5-9b (Qwen 3.5 9B — 262K ctx)' },
+            { value: 'clod/gemma-4-31b-it', label: 'clod/gemma-4-31b-it (Gemma 4 31B — 256K ctx)' },
+          ] },
+        { name: 'temperature', type: 'number', label: 'Temperature', min: 0, max: 2, step: 0.1, quick: [0.3, 0.7, 1.0] },
+        { name: 'maxTokens', type: 'number', label: 'Max tokens', min: 1, max: 8192, step: 64, quick: [256, 1024, 4096] },
+        { name: 'systemPrompt', type: 'textarea', label: 'System prompt', full: true, rows: 3, optional: true,
+          placeholder: 'Optional system instruction…',
+          hint: 'Sent as the first system message. Keep thinking mode at none for the strongest role-prompt adherence.' },
+        { name: 'reasoningEffort', type: 'select', label: 'Thinking mode (reasoning_effort)', options: [
+            { value: 'none',   label: 'none — off (follows system prompt best)' },
+            { value: 'low',    label: 'low' },
+            { value: 'medium', label: 'medium' },
+            { value: 'high',   label: 'high' },
+          ], hint: 'Qwen 3.5 reasons by default on CLōD; set none so the role/system prompt is respected.' },
+      ],
+    },
+
+    'groq-tts': {
+      kind: 'tts',
+      keyPool: 'groq',
+      endpoint: '/api-test/tts/groq',
+      label: 'Groq',
+      tag: 'Orpheus TTS',
+      title: 'Groq Orpheus v1 English TTS',
+      model: 'canopylabs/orpheus-v1-english',
+      desc: 'Tests GROQ_API_KEY with canopylabs/orpheus-v1-english. Supports 6 voices, WAV output, vocal directions like [cheerful] / [whisper], and ms timing.',
+      meta: ['POST /openai/v1/audio/speech', 'model: canopylabs/orpheus-v1-english', 'format: wav', 'max ~200 chars/block'],
+      defaults: {
+        voice: 'autumn',
+        response_format: 'wav',
+        text: '[cheerful] Hey there! Welcome to Groq Orpheus text to speech. [whisper] Pretty fast, right?',
+      },
+      fields: [
+        { name: 'voice', type: 'select', label: 'Voice persona', options: [
+            { value: 'autumn', label: 'autumn (default)' },
+            { value: 'diana', label: 'diana' },
+            { value: 'hannah', label: 'hannah' },
+            { value: 'austin', label: 'austin' },
+            { value: 'daniel', label: 'daniel' },
+            { value: 'troy', label: 'troy' },
+          ], hint: '6 English voices supported by Orpheus v1.' },
+        { name: 'response_format', type: 'select', label: 'Response format', options: ['wav'],
+          hint: 'Groq Orpheus currently supports wav only.' },
+        { name: 'text', type: 'textarea', label: 'Text / vocal directions', required: true, full: true, rows: 4,
+          placeholder: 'Supports bracketed directions: [cheerful], [whisper], [dramatic], [excited]…',
+          hint: 'Recommended max ~200 characters per call. Bracketed directions like [cheerful] or [whisper] steer tone.' },
+      ],
+    },
+  };
+
+  // Groq per-model reasoning capabilities (mirrors api-test-server.js).
+  const GROQ_CHAT_MODEL_META = {
+    'qwen/qwen3.8-27b': {
+      efforts: ['none', 'default', 'low', 'medium', 'high'], defaultEffort: 'none',
+      formats: ['hidden', 'parsed', 'raw'], defaultFormat: 'hidden',
+    },
+    'openai/gpt-oss-20b': {
+      efforts: ['low', 'medium', 'high'], defaultEffort: 'medium',
+      formats: ['hidden', 'parsed'], defaultFormat: 'hidden',
+    },
+    'openai/gpt-oss-120b': {
+      efforts: ['low', 'medium', 'high'], defaultEffort: 'medium',
+      formats: ['hidden', 'parsed'], defaultFormat: 'hidden',
+    },
+    'llama-3.1-8b-instant': { efforts: null, formats: null },
+  };
+  const REASONING_EFFORT_LABELS = {
+    none: 'none — off (Qwen only)',
+    default: 'default — model default (Qwen only)',
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+  };
+  const REASONING_FORMAT_LABELS = {
+    hidden: 'hidden (suppress thinking trace)',
+    parsed: 'parsed (show thinking in reply meta)',
+    raw: 'raw (inline  thinking in content, Qwen only)',
   };
 
   // ---------------------------------------------------------------------
@@ -523,13 +827,17 @@
   // ---------------------------------------------------------------------
   const state = {
     service: 'deapi-image',
-    keyIndex: 0,
-    keys: [],
+    keyIndices: { deapi: 0, gemini: 0, openrouter: 0, groq: 0, clod: 0 },
+    keyPools: { deapi: [], gemini: [], openrouter: [], groq: [], clod: [] },
     env: null,
     forms: {},
     files: {},
     modelInfo: {},
     activeJob: null,
+    ttsResults: {},
+    chatHistories: {},
+    chatDraftImages: {},
+    chatSending: false,
     pollTimer: null,
     tickTimer: null,
     startedAt: 0,
@@ -595,7 +903,7 @@
       state.service = key;
       renderTabs();
       renderService();
-      if (!state.modelInfo[key]) loadModelInfo(true);
+      if (!SERVICES[key].kind && !state.modelInfo[key]) loadModelInfo(true);
     }
     if (location.hash !== `#${key}`) {
       history.replaceState(null, '', `#${key}`);
@@ -610,12 +918,18 @@
       statusbar.innerHTML = '<span class="status-pill"><span class="dot"></span> Checking env…</span>';
       return;
     }
-    const { deapi } = state.env;
+    const { deapi, gemini, openrouter, groq, clod } = state.env;
+    const pill = (name, info) => `
+      <span class="status-pill" title="${info?.configured ? `${name} keys loaded from .env` : `No ${name} keys in .env`}">
+        <span class="dot ${info?.configured ? 'good' : 'bad'}"></span>
+        ${name} · ${info?.keys?.length || 0} key${info?.keys?.length === 1 ? '' : 's'}
+      </span>`;
     statusbar.innerHTML = `
-      <span class="status-pill" title="${deapi.configured ? 'deAPI keys loaded from .env' : 'No deAPI keys in .env'}">
-        <span class="dot ${deapi.configured ? 'good' : 'bad'}"></span>
-        deAPI · ${deapi.keys.length} key${deapi.keys.length === 1 ? '' : 's'}
-      </span>
+      ${pill('deAPI', deapi)}
+      ${pill('Gemini', gemini)}
+      ${pill('OpenRouter', openrouter)}
+      ${pill('Groq', groq)}
+      ${pill('Clod', clod)}
       <span class="status-pill"><span class="dot warn"></span> local only</span>
     `;
   }
@@ -623,28 +937,50 @@
   // ---------------------------------------------------------------------
   // Form rendering
   // ---------------------------------------------------------------------
+  function getActivePool() {
+    return SERVICES[state.service]?.keyPool || 'deapi';
+  }
+
   function renderService() {
     const cfg = SERVICES[state.service];
-    $('modelPill').textContent = cfg.model;
+    const isDeapi = !cfg.kind;
+    const isChat = cfg.kind === 'chat';
+    const currentModel = state.forms[state.service]?.model || cfg.model;
+
+    $('modelPill').textContent = currentModel;
     $('serviceTitle').textContent = cfg.title;
     $('serviceDesc').textContent = cfg.desc;
     $('defaultsBtn').textContent = 'Use live model defaults';
+    $('defaultsBtn').style.display = isDeapi ? '' : 'none';
+    $('limitsNote').style.display = isDeapi ? '' : 'none';
+    $('runBtn').style.display = isChat ? 'none' : '';
+    $('clearBtn').textContent = isChat ? 'Clear chat' : 'Clear result';
 
     const metaEl = $('serviceMeta');
     metaEl.innerHTML = cfg.meta.map((m) => `<span class="chip">${esc(m)}</span>`).join('');
     metaEl.insertAdjacentHTML('beforeend', keySelectMarkup());
 
-    renderLimitsNote();
+    if (isDeapi) renderLimitsNote();
     renderFields();
-    renderResult(state.activeJob);
+
+    if (isChat) {
+      renderChatInterface();
+    } else if (cfg.kind === 'tts') {
+      renderTtsResult(state.ttsResults[state.service] || null);
+    } else {
+      renderResult(state.activeJob);
+    }
   }
 
   function keySelectMarkup() {
-    if (!state.keys.length) {
-      return '<span class="chip" style="color:#ff9db5">No deAPI keys loaded</span>';
+    const pool = getActivePool();
+    const keys = state.keyPools[pool] || [];
+    const activeIdx = state.keyIndices[pool] ?? 0;
+    if (!keys.length) {
+      return `<span class="chip" style="color:#ff9db5">No ${esc(pool)} keys loaded</span>`;
     }
-    const opts = state.keys.map((k) =>
-      `<option value="${k.index}" ${k.index === state.keyIndex ? 'selected' : ''}>${esc(k.label)} · ${esc(k.masked)}</option>`
+    const opts = keys.map((k) =>
+      `<option value="${k.index}" ${k.index === activeIdx ? 'selected' : ''}>${esc(k.label)} · ${esc(k.masked)}</option>`
     ).join('');
     return `<label class="chip" style="display:inline-flex;gap:6px;align-items:center">key
       <select id="keySelect" style="width:auto;border:0;background:#0e0b11;padding:2px 24px 2px 6px;font-size:11px;border-radius:6px">${opts}</select>
@@ -692,6 +1028,14 @@
         el.value = values[field.name] ?? '';
         el.addEventListener('input', () => { values[field.name] = el.value; });
         wrap.appendChild(el);
+      } else if (field.type === 'text') {
+        const el = document.createElement('input');
+        el.type = 'text';
+        el.id = `f-${field.name}`;
+        el.placeholder = field.placeholder || '';
+        el.value = values[field.name] ?? '';
+        el.addEventListener('input', () => { values[field.name] = el.value; });
+        wrap.appendChild(el);
       } else if (field.type === 'image') {
         wrap.appendChild(renderImageField(field));
       } else if (field.type === 'select') {
@@ -706,7 +1050,13 @@
           if (String(values[field.name] ?? '') === String(value)) option.selected = true;
           el.appendChild(option);
         });
-        el.addEventListener('change', () => { values[field.name] = el.value; });
+        el.addEventListener('change', () => {
+          values[field.name] = el.value;
+          if (field.name === 'model') {
+            $('modelPill').textContent = el.value;
+            syncConditionalFields();
+          }
+        });
         wrap.appendChild(el);
       } else if (field.type === 'seed') {
         const row = document.createElement('div');
@@ -763,11 +1113,53 @@
     const keySelect = $('keySelect');
     if (keySelect) {
       keySelect.addEventListener('change', () => {
-        state.keyIndex = Number(keySelect.value);
-        state.modelInfo[state.service] = null;
-        loadModelInfo(true);
+        const pool = getActivePool();
+        state.keyIndices[pool] = Number(keySelect.value);
+        if (!SERVICES[state.service].kind) {
+          state.modelInfo[state.service] = null;
+          loadModelInfo(true);
+        }
       });
     }
+
+    syncConditionalFields();
+  }
+
+  // Keep model-dependent fields in sync with the selected model.
+  // - Gemini: thinking level only applies to the Gemma 4 text models.
+  // - Groq: reasoning_effort / reasoning_format options differ per model, and
+  //   Llama 3.1 8B has no reasoning support at all.
+  function syncConditionalFields() {
+    const values = state.forms[state.service] || {};
+
+    const thinkingField = $('f-thinkingLevel')?.closest('.field');
+    if (thinkingField) {
+      thinkingField.style.display = /^gemma/i.test(String(values.model || '')) ? '' : 'none';
+    }
+
+    if (state.service === 'groq-chat') {
+      const meta = GROQ_CHAT_MODEL_META[values.model] || GROQ_CHAT_MODEL_META['qwen/qwen3.8-27b'];
+      syncModelSelect('reasoningEffort', meta.efforts, meta.defaultEffort, REASONING_EFFORT_LABELS, values);
+      syncModelSelect('reasoningFormat', meta.formats, meta.defaultFormat, REASONING_FORMAT_LABELS, values);
+    }
+  }
+
+  function syncModelSelect(fieldName, allowed, fallback, labels, values) {
+    const field = $(`f-${fieldName}`)?.closest('.field');
+    const select = $(`f-${fieldName}`);
+    if (!field || !select) return;
+    if (!Array.isArray(allowed) || !allowed.length) {
+      field.style.display = 'none';
+      return;
+    }
+    field.style.display = '';
+    const current = String(values[fieldName] ?? '');
+    const next = allowed.includes(current) ? current : fallback;
+    select.innerHTML = allowed
+      .map((value) => `<option value="${esc(value)}">${esc(labels[value] || value)}</option>`)
+      .join('');
+    select.value = next;
+    values[fieldName] = next;
   }
 
   function renderSizeField(field, values) {
@@ -935,8 +1327,9 @@
 
   async function loadModelInfo(silent = false) {
     const cfg = SERVICES[state.service];
+    if (cfg.kind) return;
     try {
-      const res = await fetch(`/api-test/deapi/models?model=${encodeURIComponent(cfg.model)}&keyIndex=${state.keyIndex}`);
+      const res = await fetch(`/api-test/deapi/models?model=${encodeURIComponent(cfg.model)}&keyIndex=${state.keyIndices.deapi}`);
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.message || `HTTP ${res.status}`);
       state.modelInfo[state.service] = json;
@@ -996,7 +1389,7 @@
       if (value === '' || value === null || value === undefined) return;
       params[field.name] = value;
     });
-    params.keyIndex = state.keyIndex;
+    params.keyIndex = state.keyIndices[getActivePool()] ?? 0;
     return params;
   }
 
@@ -1004,7 +1397,13 @@
     event.preventDefault();
     if (state.running) return;
     const cfg = SERVICES[state.service];
+    if (cfg.kind === 'chat') return;
     const params = buildParams();
+
+    if (cfg.kind === 'tts') {
+      await runTtsTest(cfg, params);
+      return;
+    }
 
     if (!params.prompt || !String(params.prompt).trim()) {
       toast('Add a prompt first.', true);
@@ -1215,6 +1614,322 @@
   }
 
   // ---------------------------------------------------------------------
+  // Chat Messaging Interface (Gemini + Groq Vision/Text)
+  // ---------------------------------------------------------------------
+  function renderChatInterface() {
+    const serviceKey = state.service;
+    const cfg = SERVICES[serviceKey];
+    const values = state.forms[serviceKey];
+    const pool = cfg.keyPool || 'gemini';
+    const activeKey = (state.keyPools[pool] || []).find((k) => k.index === state.keyIndices[pool]);
+    const messages = state.chatHistories[serviceKey] || [];
+    const draftImg = state.chatDraftImages[serviceKey] || null;
+
+    let msgsHtml = '';
+    if (!messages.length) {
+      msgsHtml = `<div class="chat-empty">Send ${cfg.supportsImage ? 'text, an uploaded image, or both' : 'a message'} below to test <strong>${esc(values.model || cfg.model)}</strong>${activeKey ? ` with <strong>${esc(activeKey.label)}</strong>` : ''}. Exact response time in ms is recorded per reply.</div>`;
+    } else {
+      msgsHtml = messages.map((m) => {
+        if (m.role === 'user') {
+          const imgHtml = m.image ? `<img class="chat-bubble-img" src="${m.image}" alt="Uploaded input">` : '';
+          const txtHtml = m.content ? `<div>${esc(m.content)}</div>` : '';
+          return `<div class="chat-bubble user">${imgHtml}${txtHtml}</div>`;
+        }
+        if (m.error) {
+          return `<div class="chat-bubble error">${esc(m.content)}<div class="chat-meta"><span class="ms-pill err">${esc(m.responseTimeMs)} ms</span>${m.keyLabel ? `<span>${esc(m.keyLabel)}</span>` : ''}${m.model ? `<span>${esc(m.model)}</span>` : ''}${m.status ? `<span>HTTP ${esc(m.status)}</span>` : ''}${m.warning ? `<span title="${esc(m.warning)}">⚠ ${esc(m.warning)}</span>` : ''}</div></div>`;
+        }
+        const tokens = m.usageMetadata?.totalTokenCount ? `${m.usageMetadata.totalTokenCount} tok` : '';
+        const reasoningHtml = m.reasoningText
+          ? `<details class="reasoning-trace"><summary>🧠 Thinking trace</summary><pre style="white-space:pre-wrap;font-size:11px;opacity:.8;margin:6px 0 0">${esc(m.reasoningText)}</pre></details>`
+          : '';
+        const thinkingLabel = m.thinkingLevel
+          ? `thinking: ${m.thinkingLevel}`
+          : (m.reasoningEffort && m.reasoningEffort !== 'none'
+            ? `thinking: ${m.reasoningEffort}${m.reasoningFormat ? ` / ${m.reasoningFormat}` : ''}`
+            : '');
+        const warningHtml = m.warning ? `<span title="${esc(m.warning)}">⚠ ${esc(m.warning)}</span>` : '';
+        return `<div class="chat-bubble assistant">${reasoningHtml}${esc(m.content)}<div class="chat-meta"><span class="ms-pill">${esc(m.responseTimeMs)} ms</span>${m.keyLabel ? `<span>${esc(m.keyLabel)}</span>` : ''}${m.model ? `<span>${esc(m.model)}</span>` : ''}${tokens ? `<span>${esc(tokens)}</span>` : ''}${thinkingLabel ? `<span>${esc(thinkingLabel)}</span>` : ''}${warningHtml}</div></div>`;
+      }).join('');
+    }
+
+    const attachHtml = cfg.supportsImage ? `
+      <div class="chat-attach-row">
+        <input type="file" id="chatImgInput" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+        <button class="ghost" type="button" id="chatAttachBtn" style="padding:6px 11px;font-size:12px" ${state.chatSending ? 'disabled' : ''}>+ Attach image</button>
+        ${draftImg ? `<img class="chat-thumb" src="${draftImg.dataUrl}" alt="Draft"><span class="hint">${esc(draftImg.name)}</span><button class="ghost" type="button" id="chatRemoveImg" style="padding:4px 9px;font-size:11px">remove</button>` : '<span class="hint">Optional image (send text, image, or both)</span>'}
+      </div>` : '';
+
+    resultCard.innerHTML = `
+      <div class="chat-shell">
+        <div class="chat-head">
+          <h3>Messaging Test</h3>
+          <span class="hint">${esc(values.model || cfg.model)}${activeKey ? ` · ${esc(activeKey.label)}` : ''}</span>
+        </div>
+        <div class="chat-messages" id="chatMessages">${msgsHtml}</div>
+        <div class="chat-compose">
+          ${attachHtml}
+          <textarea id="chatInput" rows="2" placeholder="${cfg.supportsImage ? 'Type a message or attach an image…' : 'Type a message…'} (Enter to send, Shift+Enter for newline)" ${state.chatSending ? 'disabled' : ''}></textarea>
+          <button class="primary" type="button" id="chatSendBtn" ${state.chatSending ? 'disabled' : ''}>${state.chatSending ? 'Sending…' : 'Send'}</button>
+        </div>
+      </div>`;
+
+    const msgBox = $('chatMessages');
+    if (msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+
+    const input = $('chatInput');
+    const sendBtn = $('chatSendBtn');
+    if (sendBtn) sendBtn.addEventListener('click', sendChatMessage);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendChatMessage();
+        }
+      });
+      if (!state.chatSending) input.focus();
+    }
+
+    if (cfg.supportsImage) {
+      const fileInput = $('chatImgInput');
+      const attachBtn = $('chatAttachBtn');
+      const removeBtn = $('chatRemoveImg');
+      if (attachBtn && fileInput) attachBtn.addEventListener('click', () => fileInput.click());
+      if (fileInput) {
+        fileInput.addEventListener('change', () => {
+          const file = fileInput.files?.[0];
+          if (!file) return;
+          if (!/^image\//.test(file.type)) { toast('Please choose an image file.', true); return; }
+          if (file.size > 20 * 1024 * 1024) { toast('Image exceeds 20 MB limit.', true); return; }
+          const reader = new FileReader();
+          reader.onload = () => {
+            state.chatDraftImages[serviceKey] = { name: file.name, dataUrl: String(reader.result) };
+            renderChatInterface();
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          state.chatDraftImages[serviceKey] = null;
+          renderChatInterface();
+        });
+      }
+    }
+  }
+
+  async function sendChatMessage() {
+    if (state.chatSending) return;
+    const serviceKey = state.service;
+    const cfg = SERVICES[serviceKey];
+    const pool = cfg.keyPool || 'gemini';
+    const endpoint = cfg.endpoint || '/api-test/gemini/chat';
+    const input = $('chatInput');
+    const text = input ? input.value.trim() : '';
+    const draftImg = cfg.supportsImage ? state.chatDraftImages[serviceKey] : null;
+    if (!text && !draftImg) return;
+
+    const values = state.forms[serviceKey];
+    if (!state.chatHistories[serviceKey]) state.chatHistories[serviceKey] = [];
+    state.chatHistories[serviceKey].push({
+      role: 'user',
+      content: text,
+      image: draftImg ? draftImg.dataUrl : null,
+    });
+    if (cfg.supportsImage) state.chatDraftImages[serviceKey] = null;
+    state.chatSending = true;
+    renderChatInterface();
+
+    const historyForApi = state.chatHistories[serviceKey]
+      .filter((m) => !m.error)
+      .map((m) => ({ role: m.role, content: m.content, image: m.image || undefined }));
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyIndex: state.keyIndices[pool],
+          model: values.model || cfg.model,
+          systemPrompt: values.systemPrompt,
+          temperature: values.temperature,
+          maxTokens: values.maxTokens,
+          thinkingLevel: values.thinkingLevel,
+          reasoningEffort: values.reasoningEffort,
+          reasoningFormat: values.reasoningFormat,
+          messages: historyForApi,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) {
+        state.chatHistories[serviceKey].push({
+          role: 'model',
+          error: true,
+          content: json.message || `HTTP ${res.status}`,
+          status: json.status || res.status,
+          keyLabel: json.keyLabel,
+          model: json.model || values.model || cfg.model,
+          warning: json.warning || null,
+          responseTimeMs: json.responseTimeMs ?? '—',
+        });
+      } else {
+        state.chatHistories[serviceKey].push({
+          role: 'model',
+          content: json.replyText,
+          keyLabel: json.keyLabel,
+          model: json.model,
+          responseTimeMs: json.responseTimeMs,
+          usageMetadata: json.usageMetadata,
+          reasoningText: json.reasoningText || null,
+          reasoningEffort: json.reasoningEffort || null,
+          reasoningFormat: json.reasoningFormat || null,
+          includeReasoning: json.includeReasoning ?? null,
+          thinkingLevel: json.thinkingLevel || null,
+          warning: json.warning || null,
+        });
+      }
+    } catch (err) {
+      state.chatHistories[serviceKey].push({
+        role: 'model',
+        error: true,
+        content: err.message,
+        model: values.model || cfg.model,
+        responseTimeMs: '—',
+      });
+    } finally {
+      state.chatSending = false;
+      renderChatInterface();
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // TTS Runner & Renderer (OpenRouter Fish TTS + Gemini 3.8 TTS)
+  // ---------------------------------------------------------------------
+  async function runTtsTest(cfg, params) {
+    if (!params.text || !String(params.text).trim()) {
+      toast('Enter text to synthesize first.', true);
+      return;
+    }
+
+    const runBtn = $('runBtn');
+    state.running = true;
+    runBtn.disabled = true;
+    runBtn.textContent = 'Synthesizing…';
+
+    const serviceKey = state.service;
+    const started = performance.now();
+    renderTtsLoading(cfg);
+
+    try {
+      const res = await fetch(cfg.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      const json = await res.json().catch(() => ({}));
+      const clientMs = Math.round(performance.now() - started);
+      if (!res.ok || !json.ok) {
+        const errPayload = {
+          ok: false,
+          message: json.message || `HTTP ${res.status}`,
+          status: json.status || res.status,
+          keyLabel: json.keyLabel,
+          model: json.model || params.model || cfg.model,
+          responseTimeMs: json.responseTimeMs ?? clientMs,
+          clientMs,
+          details: json.details || json,
+        };
+        state.ttsResults[serviceKey] = errPayload;
+        renderTtsResult(errPayload);
+        toast(errPayload.message, true);
+      } else {
+        json.clientMs = clientMs;
+        state.ttsResults[serviceKey] = json;
+        renderTtsResult(json);
+        toast(`Synthesized in ${json.responseTimeMs} ms`);
+      }
+    } catch (err) {
+      const errPayload = {
+        ok: false,
+        message: err.message,
+        responseTimeMs: Math.round(performance.now() - started),
+        details: { message: err.message },
+      };
+      state.ttsResults[serviceKey] = errPayload;
+      renderTtsResult(errPayload);
+      toast(err.message, true);
+    } finally {
+      state.running = false;
+      runBtn.disabled = false;
+      runBtn.textContent = 'Run test';
+    }
+  }
+
+  function renderTtsLoading(cfg) {
+    resultCard.innerHTML = `
+      <div class="result-head">
+        <span class="badge running"><span class="spinner"></span>synthesizing</span>
+        <span class="elapsed">waiting…</span>
+      </div>
+      <div class="result-msg">Calling ${esc(cfg.title)}…</div>
+      <div class="bar"><span class="indeterminate"></span></div>`;
+  }
+
+  function renderTtsResult(data) {
+    if (!data) {
+      resultCard.innerHTML = `
+        <div class="empty">
+          <div>
+            <div class="big">◇</div>
+            <p>Pick a key, configure the TTS parameters and click Run test. Audio and exact response time in ms will appear here.</p>
+          </div>
+        </div>`;
+      return;
+    }
+
+    if (!data.ok) {
+      const raw = JSON.stringify(data.details ?? data, null, 2);
+      resultCard.innerHTML = `
+        <div class="result-head">
+          <span class="badge error">failed</span>
+          <span class="ms-pill err">${esc(data.responseTimeMs ?? '—')} ms</span>
+        </div>
+        <div class="result-msg error">${esc(data.message)}</div>
+        <div class="error-box">
+          <div class="err-line">${esc(data.message)}</div>
+          ${data.status ? `<div class="hint" style="margin-top:6px">HTTP status: ${esc(data.status)}${data.keyLabel ? ` · key: ${esc(data.keyLabel)}` : ''}${data.model ? ` · model: ${esc(data.model)}` : ''}</div>` : ''}
+          <details open><summary>Exact API response</summary><pre>${esc(raw.slice(0, 16000))}</pre></details>
+        </div>`;
+      return;
+    }
+
+    const ext = data.mimeType?.includes('wav') ? 'wav' : 'mp3';
+    const meta = [
+      ['response time', `${data.responseTimeMs} ms (client round-trip ${data.clientMs ?? data.responseTimeMs} ms)`],
+      ['model', data.model],
+      ['api key', data.keyLabel],
+    ];
+    if (data.voice) meta.push(['voice id', data.voice]);
+    if (data.voiceName) meta.push(['voice name', data.voiceName]);
+    if (data.mimeType) meta.push(['mime type', data.mimeType]);
+    if (data.rawMimeType && data.rawMimeType !== data.mimeType) meta.push(['raw mime type', data.rawMimeType]);
+    if (data.byteLength != null) meta.push(['audio size', `${(data.byteLength / 1024).toFixed(1)} KB (${data.byteLength} bytes)`]);
+
+    resultCard.innerHTML = `
+      <div class="result-head">
+        <span class="badge done">completed</span>
+        <span class="ms-pill">${esc(data.responseTimeMs)} ms</span>
+      </div>
+      <div class="result-msg">Speech synthesized in ${esc(data.responseTimeMs)} ms</div>
+      <div class="audio-box">
+        <audio controls autoplay src="${data.audioDataUrl}"></audio>
+      </div>
+      <dl class="meta">${meta.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+      <div class="actions">
+        <a class="btn solid" href="${data.audioDataUrl}" download="tts-${esc(data.model || 'audio')}.${ext}">Download .${ext}</a>
+      </div>`;
+  }
+
+  // ---------------------------------------------------------------------
   // Init
   // ---------------------------------------------------------------------
   $('defaultsBtn').addEventListener('click', () => {
@@ -1223,6 +1938,18 @@
   });
 
   $('clearBtn').addEventListener('click', () => {
+    const cfg = SERVICES[state.service];
+    if (cfg.kind === 'chat') {
+      state.chatHistories[state.service] = [];
+      state.chatDraftImages[state.service] = null;
+      renderChatInterface();
+      return;
+    }
+    if (cfg.kind === 'tts') {
+      state.ttsResults[state.service] = null;
+      renderTtsResult(null);
+      return;
+    }
     stopPolling();
     state.activeJob = null;
     resultCard.innerHTML = `
@@ -1240,8 +1967,17 @@
       const json = await res.json();
       if (!json.ok) throw new Error(json.message || 'Status failed');
       state.env = json;
-      state.keys = json.deapi.keys;
-      if (!state.keys.some((k) => k.index === state.keyIndex)) state.keyIndex = state.keys[0]?.index ?? 0;
+      state.keyPools.deapi = json.deapi?.keys || [];
+      state.keyPools.gemini = json.gemini?.keys || [];
+      state.keyPools.openrouter = json.openrouter?.keys || [];
+      state.keyPools.groq = json.groq?.keys || [];
+      state.keyPools.clod = json.clod?.keys || [];
+      for (const pool of ['deapi', 'gemini', 'openrouter', 'groq', 'clod']) {
+        const list = state.keyPools[pool];
+        if (!list.some((k) => k.index === state.keyIndices[pool])) {
+          state.keyIndices[pool] = list[0]?.index ?? 0;
+        }
+      }
       renderStatus();
     } catch (err) {
       statusbar.innerHTML = `<span class="status-pill"><span class="dot bad"></span> ${esc(err.message)}</span>`;
@@ -1254,7 +1990,7 @@
     renderTabs();
     await loadStatus();
     renderService();
-    loadModelInfo(true);
+    if (!SERVICES[state.service].kind) loadModelInfo(true);
   }
 
   init();
