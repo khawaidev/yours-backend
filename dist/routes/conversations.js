@@ -220,6 +220,9 @@ router.post('/:id/messages', auth_1.requireAuth, rateLimitService_1.messagingRat
         // 2. Save user message
         const now = new Date();
         const userContent = (content || '').trim();
+        if (userContent.length > 2000) {
+            return res.status(400).json({ success: false, error: 'Message exceeds 2000 character limit' });
+        }
         const { data: userMsg, error: userMsgErr } = await config_1.supabaseAdmin
             .from('messages')
             .insert({
