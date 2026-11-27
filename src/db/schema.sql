@@ -114,7 +114,6 @@ CREATE TABLE IF NOT EXISTS public.characters (
     voice_id TEXT,
     visibility TEXT DEFAULT 'public', -- 'public', 'unlisted', 'private'
     status TEXT DEFAULT 'active',
-    is_verified BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

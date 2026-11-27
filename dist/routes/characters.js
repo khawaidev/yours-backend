@@ -68,7 +68,7 @@ router.get('/', async (req, res) => {
 // ---------------------------------------------------------------------------
 // A small JSON file that mirrors the admin page's character list with only
 // the fields the admin UI needs: full name, age, art style, gender,
-// personality and verified status. The admin page reads its list from here
+// personality and voice. The admin page reads its list from here
 // instead of querying Supabase, and writes to it after every add/update.
 const CHARACTER_INDEX_DIR = (0, path_1.resolve)(__dirname, '../../data');
 const CHARACTER_INDEX_FILE = (0, path_1.join)(CHARACTER_INDEX_DIR, 'characters-index.json');
@@ -101,7 +101,6 @@ function toIndexEntry(row) {
         gender: row.gender || '',
         personality: row.personality || '',
         voice_id: row.voice_id || '',
-        verified: row.verified === true,
         updated_at: row.updated_at || new Date().toISOString()
     };
 }
@@ -109,7 +108,7 @@ function toIndexEntry(row) {
 async function seedCharacterIndexFromSupabase() {
     const { data, error } = await config_1.supabaseAdmin
         .from('characters')
-        .select('id,name,age,art_style,gender,personality,voice_id,verified,created_at')
+        .select('id,name,age,art_style,gender,personality,voice_id,created_at')
         .order('created_at', { ascending: false })
         .limit(200);
     if (error)
@@ -172,7 +171,6 @@ router.post('/local-index', async (req, res) => {
             gender: String(body.gender || ''),
             personality: String(body.personality || ''),
             voice_id: String(body.voice_id || ''),
-            verified: body.verified === true,
             updated_at: new Date().toISOString()
         };
         const existingIndex = entries.findIndex(function (e) { return e && e.id === id; });
