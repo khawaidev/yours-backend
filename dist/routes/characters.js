@@ -11,8 +11,7 @@ const aiRouterService_1 = require("../services/aiRouterService");
 const speechService_1 = require("../services/speechService");
 const rateLimitService_1 = require("../services/rateLimitService");
 const auth_1 = require("../middleware/auth");
-// Shared Fish TTS voice for all characters right now; per-character voice IDs
-// will replace it later (characters.voice_id already stores an optional ID).
+// Fallback Fish Audio voice used when a character has no voice_id selected.
 const DEFAULT_VOICE_ID = '8fdcb77230554e1ab160e2361bff4296';
 const router = (0, express_1.Router)();
 // The public character catalog is global and rarely changes; cache it so the
@@ -101,6 +100,7 @@ function toIndexEntry(row) {
         art_style: row.art_style || '',
         gender: row.gender || '',
         personality: row.personality || '',
+        voice_id: row.voice_id || '',
         verified: row.verified === true,
         updated_at: row.updated_at || new Date().toISOString()
     };
@@ -109,7 +109,7 @@ function toIndexEntry(row) {
 async function seedCharacterIndexFromSupabase() {
     const { data, error } = await config_1.supabaseAdmin
         .from('characters')
-        .select('id,name,age,art_style,gender,personality,verified,created_at')
+        .select('id,name,age,art_style,gender,personality,voice_id,verified,created_at')
         .order('created_at', { ascending: false })
         .limit(200);
     if (error)
@@ -171,6 +171,7 @@ router.post('/local-index', async (req, res) => {
             art_style: String(body.art_style || ''),
             gender: String(body.gender || ''),
             personality: String(body.personality || ''),
+            voice_id: String(body.voice_id || ''),
             verified: body.verified === true,
             updated_at: new Date().toISOString()
         };
@@ -596,12 +597,11 @@ router.post('/:id/generate-voice', auth_1.requireAuth, rateLimitService_1.messag
         }
         // 1. Generate the in-character voice script.
         const script = await aiRouterService_1.AIRouterService.generateVoiceScript(character, historyMessages, prompt.trim());
-        // 2. Synthesize speech with the shared Fish voice (per-character voice IDs
-        //    will be wired up later once each character has a real Fish UUID —
-        //    characters.voice_id currently holds arbitrary labels, not Fish IDs).
+        // 2. Synthesize speech with the character's selected Fish Audio voice,
+        //    falling back to the shared default when none is configured.
         const speech = await speechService_1.SpeechService.generateSpeech({
             text: script,
-            voice: DEFAULT_VOICE_ID,
+            voice: character.voice_id || DEFAULT_VOICE_ID,
             speed: 1.0,
         });
         // 3. Persist when a conversation is available (mirrors generate-image).
@@ -690,7 +690,7 @@ router.post('/:id/generate-voice', auth_1.requireAuth, rateLimitService_1.messag
             success: true,
             audioUrl,
             transcript: script,
-            voiceId: DEFAULT_VOICE_ID,
+            voiceId: speech.voiceId || DEFAULT_VOICE_ID,
         });
     }
     catch (err) {

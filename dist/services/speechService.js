@@ -4,10 +4,10 @@ exports.SpeechService = void 0;
 /**
  * Speech synthesis service.
  *
- * Primary path: Gemini TTS (`gemini-3.8-flash-tts` → `gemini-3.8-flash-lite-tts`)
- * using the Gemini API key pool. If both models fail on a key, the next Gemini
- * key is tried. Only after every Gemini key/model has failed do we fall back to
- * OpenRouter's `/api/v1/audio/speech` endpoint (Fish Audio s2.1).
+ * Primary path: OpenRouter's `/api/v1/audio/speech` endpoint with the free
+ * Fish Audio s2.1 Pro model (`fish-audio/s2.1-pro-free:free`). Each character's
+ * stored Fish Audio voice ID is used directly, falling back to a shared default
+ * voice. If every OpenRouter key fails, Gemini TTS is used as a backup.
  */
 const config_1 = require("../config");
 const GEMINI_TTS_BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -202,6 +202,20 @@ class SpeechService {
      */
     static async generateSpeech(input) {
         const errors = [];
+        // Default path for chat voice notes: Fish Audio s2.1 Pro via OpenRouter.
+        const openRouterKeys = this.getOpenRouterKeys();
+        const maxOpenRouterKeys = Math.min(openRouterKeys.length, 8);
+        for (let k = 0; k < maxOpenRouterKeys; k++) {
+            try {
+                return await this.synthesizeWithOpenRouter(openRouterKeys[k], input);
+            }
+            catch (err) {
+                const message = err && err.message ? err.message : String(err);
+                errors.push(`OpenRouter key ${k + 1}: ${message}`);
+                console.warn(`[SpeechService] ${message}`);
+            }
+        }
+        // Backup path only: Gemini TTS when OpenRouter is unavailable.
         const geminiKeys = this.getGeminiKeys();
         const maxGeminiKeys = Math.min(geminiKeys.length, 8);
         for (let k = 0; k < maxGeminiKeys; k++) {
@@ -214,18 +228,6 @@ class SpeechService {
                     errors.push(`key ${k + 1} / ${model}: ${message}`);
                     console.warn(`[SpeechService] ${message}`);
                 }
-            }
-        }
-        const openRouterKeys = this.getOpenRouterKeys();
-        const maxOpenRouterKeys = Math.min(openRouterKeys.length, 8);
-        for (let k = 0; k < maxOpenRouterKeys; k++) {
-            try {
-                return await this.synthesizeWithOpenRouter(openRouterKeys[k], input);
-            }
-            catch (err) {
-                const message = err && err.message ? err.message : String(err);
-                errors.push(`OpenRouter key ${k + 1}: ${message}`);
-                console.warn(`[SpeechService] ${message}`);
             }
         }
         throw new Error(`Speech synthesis failed on every provider${errors.length ? `: ${errors.join(' | ')}` : ''}`);
